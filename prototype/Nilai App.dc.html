@@ -1,0 +1,866 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="_ds/modernist-aa55c0f8-a422-4b18-8530-8da584fc37c0/styles.css">
+<script src="_ds/modernist-aa55c0f8-a422-4b18-8530-8da584fc37c0/_ds_bundle.js"></script>
+<script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<style>body{margin:0;background:var(--color-bg)}a{color:var(--color-accent-700)}a:hover{color:var(--color-accent-800)}button,input{font-family:inherit}input::placeholder{color:var(--color-neutral-600)}</style>
+</helmet>
+<div style="min-height:100vh;background:var(--color-bg);color:var(--color-text);font-family:var(--font-body)">
+
+<sc-if value="{{ authOut }}" hint-placeholder-val="{{ false }}">
+<div style="min-height:100vh;display:grid;grid-template-columns:{{ gAuth }}">
+<div style="background:var(--color-accent);color:var(--color-bg);padding:{{ pad2 }};display:flex;flex-direction:column;justify-content:space-between;gap:32px">
+<div style="font-weight:800;font-size:24px;letter-spacing:-0.02em">Nilai</div>
+<div style="font-size:{{ authStmt }};font-weight:800;line-height:1.02;letter-spacing:-0.03em;text-wrap:pretty;max-width:640px">{{ t.welcome }}</div>
+<div style="font-size:14px;font-weight:600">IDR · USD · Crypto · Saham · ETF · Deposito · Reksa dana · Emas</div>
+</div>
+<div style="padding:{{ pad2 }};display:flex;flex-direction:column;justify-content:center;gap:20px;max-width:540px;width:100%">
+<div style="display:flex;border:2px solid var(--color-text);align-self:flex-start"><sc-for list="{{ langOpts }}" as="o" hint-placeholder-count="2"><button onClick="{{ o.set }}" style="font-weight:800;font-size:12px;padding:8px 12px;border:0;cursor:pointer;background:{{ o.bg }};color:{{ o.fg }}">{{ o.name }}</button></sc-for></div>
+
+<sc-if value="{{ aSignup }}">
+<div style="display:flex;flex-direction:column;gap:16px">
+<h2 style="margin:0;font-size:32px">{{ t.signup }}</h2>
+<label style="display:flex;flex-direction:column;gap:6px"><span style="font-size:12px;color:var(--color-neutral-800)">{{ t.name }}</span><input value="{{ signName }}" onChange="{{ onSignName }}" style="width:100%;min-height:48px;padding:8px 12px;font-size:16px;border:2px solid var(--color-text);background:var(--color-bg);color:var(--color-text)"></label>
+<label style="display:flex;flex-direction:column;gap:6px"><span style="font-size:12px;color:var(--color-neutral-800)">Email</span><input type="email" value="{{ signEmail }}" onChange="{{ onSignEmail }}" placeholder="you@email.com" style="width:100%;min-height:48px;padding:8px 12px;font-size:16px;border:2px solid var(--color-text);background:var(--color-bg);color:var(--color-text)"></label>
+<div style="font-size:14px;color:var(--color-accent-700);font-weight:600">{{ authErr }}</div>
+<button onClick="{{ signup }}" style="background:var(--color-accent);color:var(--color-bg);border:0;font-weight:800;font-size:15px;padding:14px 16px;cursor:pointer;text-align:left" style-hover="background:var(--color-accent-600)">{{ t.cont }} →</button>
+<button onClick="{{ google }}" style="background:transparent;border:2px solid var(--color-text);font-weight:800;font-size:15px;padding:12px 16px;cursor:pointer;text-align:left;color:var(--color-text)" style-hover="background:var(--color-neutral-200)">{{ t.google }}</button>
+</div>
+</sc-if>
+
+<sc-if value="{{ aOtp }}">
+<div style="display:flex;flex-direction:column;gap:16px">
+<h2 style="margin:0;font-size:32px">{{ t.otpT }}</h2>
+<div style="font-size:15px;color:var(--color-neutral-800)">{{ t.otpS }} <b style="color:var(--color-text)">{{ signEmail }}</b></div>
+<input value="{{ otp }}" onChange="{{ onOtp }}" inputMode="numeric" maxLength="6" placeholder="000000" style="width:100%;min-height:56px;padding:8px 14px;font-size:28px;font-weight:800;letter-spacing:0.3em;border:2px solid var(--color-text);background:var(--color-bg);color:var(--color-text)">
+<div style="font-size:14px;color:var(--color-accent-700);font-weight:600">{{ authErr }}</div>
+<button onClick="{{ verifyOtp }}" style="background:var(--color-accent);color:var(--color-bg);border:0;font-weight:800;font-size:15px;padding:14px 16px;cursor:pointer;text-align:left" style-hover="background:var(--color-accent-600)">{{ t.verify }} →</button>
+<div style="font-size:13px;color:var(--color-neutral-700)">{{ t.otpNote }}</div>
+</div>
+</sc-if>
+
+<sc-if value="{{ aPin }}">
+<div style="display:flex;flex-direction:column;gap:18px;max-width:360px">
+<h2 style="margin:0;font-size:32px">{{ pinTitle }}</h2>
+<div style="font-size:15px;color:var(--color-neutral-800);min-height:22px">{{ pinSub }}</div>
+<div style="display:flex;gap:10px"><sc-for list="{{ pinDots }}" as="d" hint-placeholder-count="6"><div style="width:22px;height:22px;border:2px solid var(--color-text);background:{{ d.bg }}"></div></sc-for></div>
+<div style="font-size:14px;color:var(--color-accent-700);font-weight:600;min-height:20px">{{ authErr }}</div>
+<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:2px;background:var(--color-text);border:2px solid var(--color-text)"><sc-for list="{{ keys }}" as="k" hint-placeholder-count="12"><button onClick="{{ k.press }}" style="height:64px;border:0;background:var(--color-bg);font-size:24px;font-weight:800;text-align:left;padding:0 18px;cursor:pointer;color:var(--color-text);visibility:{{ k.vis }}" style-hover="background:var(--color-neutral-200)" style-active="background:var(--color-accent-200)">{{ k.label }}</button></sc-for></div>
+<sc-if value="{{ aLocked }}"><button onClick="{{ forgot }}" style="background:none;border:0;padding:0;font-weight:800;font-size:14px;color:var(--color-accent-700);cursor:pointer;text-align:left">{{ t.forgot }}</button></sc-if>
+</div>
+</sc-if>
+</div>
+</div>
+</sc-if>
+
+<sc-if value="{{ authIn }}" hint-placeholder-val="{{ true }}">
+<sc-if value="{{ wide }}" hint-placeholder-val="{{ true }}">
+<div style="position:sticky;top:0;z-index:20;background:var(--color-bg);height:60px;display:flex;align-items:center;gap:28px;padding:0 32px;border-bottom:2px solid var(--color-text)">
+<div style="font-weight:800;font-size:22px;letter-spacing:-0.02em">Nilai</div>
+<div style="display:flex;gap:22px;flex:1;min-width:0"><sc-for list="{{ tabs }}" as="tb" hint-placeholder-count="7"><button onClick="{{ tb.go }}" style="background:none;border:0;border-bottom:2px solid {{ tb.line }};padding:4px 0 2px;font-size:14px;font-weight:{{ tb.fw }};color:var(--color-text);cursor:pointer;white-space:nowrap">{{ tb.label }}</button></sc-for></div>
+<div style="display:flex;border:2px solid var(--color-text)"><sc-for list="{{ curOpts }}" as="o" hint-placeholder-count="2"><button onClick="{{ o.set }}" style="font-weight:800;font-size:12px;padding:5px 10px;border:0;cursor:pointer;background:{{ o.bg }};color:{{ o.fg }}">{{ o.name }}</button></sc-for></div>
+<div style="display:flex;border:2px solid var(--color-text)"><sc-for list="{{ langOpts }}" as="o" hint-placeholder-count="2"><button onClick="{{ o.set }}" style="font-weight:800;font-size:12px;padding:5px 10px;border:0;cursor:pointer;background:{{ o.bg }};color:{{ o.fg }}">{{ o.name }}</button></sc-for></div>
+<button onClick="{{ lock }}" style="background:transparent;border:2px solid var(--color-text);font-weight:800;font-size:13px;padding:5px 10px;cursor:pointer;color:var(--color-text)" style-hover="background:var(--color-neutral-200)">{{ t.lock }}</button>
+</div>
+</sc-if>
+<sc-if value="{{ narrow }}" hint-placeholder-val="{{ false }}">
+<div style="position:sticky;top:0;z-index:20;background:var(--color-bg);border-bottom:2px solid var(--color-text)">
+<div style="display:flex;align-items:center;gap:8px;padding:10px 16px">
+<div style="font-weight:800;font-size:20px;flex:1">Nilai</div>
+<div style="display:flex;border:2px solid var(--color-text)"><sc-for list="{{ curOpts }}" as="o" hint-placeholder-count="2"><button onClick="{{ o.set }}" style="font-weight:800;font-size:12px;padding:10px 9px;border:0;cursor:pointer;background:{{ o.bg }};color:{{ o.fg }}">{{ o.name }}</button></sc-for></div>
+<div style="display:flex;border:2px solid var(--color-text)"><sc-for list="{{ langOpts }}" as="o" hint-placeholder-count="2"><button onClick="{{ o.set }}" style="font-weight:800;font-size:12px;padding:10px 9px;border:0;cursor:pointer;background:{{ o.bg }};color:{{ o.fg }}">{{ o.name }}</button></sc-for></div>
+<button onClick="{{ lock }}" style="background:transparent;border:2px solid var(--color-text);font-weight:800;font-size:12px;padding:10px 9px;cursor:pointer;color:var(--color-text)">{{ t.lock }}</button>
+</div>
+<div style="display:flex;gap:20px;overflow-x:auto;padding:0 16px;border-top:2px solid var(--color-text)"><sc-for list="{{ tabs }}" as="tb" hint-placeholder-count="7"><button onClick="{{ tb.go }}" style="background:none;border:0;border-bottom:3px solid {{ tb.line }};padding:12px 0 9px;font-size:14px;font-weight:{{ tb.fw }};color:var(--color-text);cursor:pointer;white-space:nowrap">{{ tb.label }}</button></sc-for></div>
+</div>
+</sc-if>
+
+<!-- DASHBOARD -->
+<sc-if value="{{ isHome }}" hint-placeholder-val="{{ true }}">
+<div data-screen-label="Dashboard">
+<div style="display:grid;grid-template-columns:{{ g21 }};gap:2px;background:var(--color-text);border-bottom:2px solid var(--color-text)">
+<div style="background:var(--color-bg);padding:{{ pad }};display:flex;flex-direction:column;gap:8px">
+<div style="font-size:12px;font-weight:800;letter-spacing:0.08em;text-transform:uppercase">{{ t.netWorth }} · {{ todayS }}</div>
+<div style="font-size:{{ heroSize }};font-weight:800;letter-spacing:-0.035em;line-height:1;overflow-wrap:anywhere">{{ totalL }}</div>
+<div style="font-size:15px;color:var(--color-neutral-800)">{{ dayChg }} {{ t.today }} · {{ investS }} {{ t.investLine }}</div>
+</div>
+<div style="background:var(--color-bg);padding:{{ pad }};display:flex;flex-direction:column;gap:10px">
+<div style="font-size:12px;font-weight:800;letter-spacing:0.08em;text-transform:uppercase">{{ t.activeGoal }} · {{ ag.name }}</div>
+<div style="display:flex;align-items:baseline;gap:10px;flex-wrap:wrap"><span style="font-size:64px;font-weight:800;letter-spacing:-0.03em;line-height:1">{{ ag.pct }}</span><span style="font-size:15px">{{ t.of }} {{ ag.targetS }}</span></div>
+<div style="height:12px;background:var(--color-neutral-300)"><div style="height:100%;width:{{ ag.pct }};background:var(--color-accent)"></div></div>
+<div style="font-size:14px;color:var(--color-neutral-800)">{{ t.eta }} {{ ag.eta }} · {{ investS }}{{ t.perMonth }} · {{ retS }}</div>
+</div>
+</div>
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:2px;background:var(--color-bg);overflow:hidden;border-bottom:2px solid var(--color-text)">
+<sc-for list="{{ goals }}" as="g" hint-placeholder-count="3">
+<button onClick="{{ g.activate }}" style="box-shadow:2px 0 0 var(--color-text),0 2px 0 var(--color-text),2px 2px 0 var(--color-text);background:{{ g.cellBg }};border:0;text-align:left;cursor:pointer;color:var(--color-text);padding:20px 24px;display:flex;flex-direction:column;gap:8px" style-hover="background:var(--color-neutral-200)">
+<div style="display:flex;justify-content:space-between;gap:8px;font-size:14px;width:100%"><span style="font-weight:800">{{ g.name }}</span><span>{{ g.targetS }}</span></div>
+<div style="font-size:32px;font-weight:800;letter-spacing:-0.02em">{{ g.pct }}</div>
+<div style="height:6px;background:var(--color-neutral-300);width:100%"><div style="height:100%;width:{{ g.pct }};background:{{ g.barCol }}"></div></div>
+<div style="font-size:13px;color:var(--color-neutral-800)">{{ t.eta }} {{ g.eta }}</div>
+</button>
+</sc-for>
+<button onClick="{{ newGoal }}" style="box-shadow:2px 0 0 var(--color-text),0 2px 0 var(--color-text),2px 2px 0 var(--color-text);background:var(--color-bg);border:0;text-align:left;cursor:pointer;padding:20px 24px;font-weight:800;font-size:14px;color:var(--color-accent-700);display:flex;align-items:flex-start" style-hover="background:var(--color-neutral-200)">{{ t.newGoal }}</button>
+</div>
+<div style="display:grid;grid-template-columns:{{ g21 }};gap:2px;background:var(--color-text);border-bottom:2px solid var(--color-text)">
+<div style="background:var(--color-bg);padding:{{ pad }};display:flex;flex-direction:column;gap:20px;min-width:0">
+<div style="font-size:12px;font-weight:800;letter-spacing:0.08em;text-transform:uppercase">{{ t.history }}</div>
+<svg viewBox="0 0 760 180" style="width:100%;display:block"><path d="{{ histArea }}" fill="var(--color-accent-100)"></path><path d="{{ histLine }}" fill="none" stroke="var(--color-accent)" stroke-width="2.5"></path></svg>
+<div style="font-size:12px;font-weight:800;letter-spacing:0.08em;text-transform:uppercase">{{ t.allocation }}</div>
+<div style="display:flex;height:28px;gap:2px"><sc-for list="{{ classes }}" as="c" hint-placeholder-count="8"><div style="width:{{ c.w }};background:{{ c.col }}"></div></sc-for></div>
+<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px 16px;font-size:13px"><sc-for list="{{ classes }}" as="c" hint-placeholder-count="8"><button onClick="{{ c.filterGo }}" style="display:flex;gap:8px;align-items:center;background:none;border:0;padding:0;cursor:pointer;color:var(--color-text);font-size:13px;text-align:left"><span style="width:10px;height:10px;background:{{ c.col }};flex:none"></span><span style="flex:1">{{ c.label }}</span><b>{{ c.w }}</b></button></sc-for></div>
+</div>
+<div style="background:var(--color-bg);padding:{{ pad }};display:flex;flex-direction:column;gap:16px;min-width:0">
+<div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px"><div style="font-size:12px;font-weight:800;letter-spacing:0.08em;text-transform:uppercase;color:var(--color-accent-700)">{{ t.brief }}</div><div style="font-size:12px;color:var(--color-neutral-800)">{{ briefSrc }}</div></div>
+<sc-for list="{{ brief }}" as="b" hint-placeholder-count="3">
+<div style="display:flex;flex-direction:column;gap:4px;padding-bottom:16px;border-bottom:1px solid var(--color-divider)">
+<div style="font-size:11px;font-weight:800;letter-spacing:0.08em;text-transform:uppercase;color:var(--color-neutral-700)">{{ b.k }}</div>
+<div style="font-size:17px;font-weight:800;line-height:1.25;text-wrap:pretty">{{ b.title }}</div>
+<div style="font-size:14px;color:var(--color-neutral-800);text-wrap:pretty">{{ b.body }}</div>
+</div>
+</sc-for>
+<div style="display:flex;gap:8px;flex-wrap:wrap">
+<button onClick="{{ goAdvisor }}" style="background:transparent;border:2px solid var(--color-text);font-weight:800;font-size:14px;padding:10px 14px;text-align:left;cursor:pointer;color:var(--color-text);flex:1" style-hover="background:var(--color-neutral-200)">{{ t.askAdvisor }}</button>
+<button onClick="{{ regenBrief }}" style="background:none;border:0;font-weight:800;font-size:13px;padding:10px 4px;cursor:pointer;color:var(--color-accent-700)">{{ regenLabel }}</button>
+</div>
+</div>
+</div>
+<div style="padding:{{ pad }}">
+<div style="display:flex;justify-content:space-between;align-items:baseline;gap:12px;flex-wrap:wrap;margin-bottom:12px"><div style="font-size:12px;font-weight:800;letter-spacing:0.08em;text-transform:uppercase">{{ t.holdings }}</div><div style="font-size:14px"><b>{{ fTotal }}</b> <span style="color:var(--color-neutral-800)">· {{ fShare }} {{ t.ofNW }}</span></div></div>
+<div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px"><sc-for list="{{ filters }}" as="f" hint-placeholder-count="9"><button onClick="{{ f.set }}" style="font-weight:800;font-size:13px;padding:7px 12px;border:2px solid var(--color-text);cursor:pointer;text-align:left;background:{{ f.bg }};color:{{ f.fg }}">{{ f.name }} <span style="font-weight:400">{{ f.count }}</span></button></sc-for></div>
+<div style="display:grid;grid-template-columns:{{ rowCols }};gap:12px;font-size:12px;font-weight:800;letter-spacing:0.06em;text-transform:uppercase;padding:8px 0;border-bottom:2px solid var(--color-text)"><span>{{ t.instrument }}</span><span style="display:{{ wideD }}">{{ t.cls }}</span><span style="display:{{ wideD }}">{{ t.qty }}</span><span style="text-align:right">{{ t.value }}</span><span style="text-align:right;display:{{ wideD }}">{{ t.todayCol }}</span><span style="text-align:right;display:{{ wideD }}">{{ t.weight }}</span></div>
+<sc-for list="{{ fRows }}" as="h" hint-placeholder-count="10">
+<button onClick="{{ h.open }}" style="width:100%;display:grid;grid-template-columns:{{ rowCols }};gap:12px;font-size:14px;padding:10px 0;border:0;border-bottom:1px solid var(--color-divider);background:none;align-items:baseline;text-align:left;cursor:pointer;color:var(--color-text)" style-hover="background:var(--color-neutral-200)"><span><b>{{ h.name }}</b> <span style="color:var(--color-neutral-700);font-size:12px">{{ h.ticker }}</span><span style="display:{{ narrowD }};font-size:12px;color:var(--color-neutral-700)">{{ h.clsL }} · {{ h.qtyS }}</span></span><span style="display:{{ wideD }}">{{ h.clsL }}</span><span style="display:{{ wideD }}">{{ h.qtyS }}</span><span style="text-align:right"><b>{{ h.val }}</b><span style="display:{{ narrowD }};font-size:12px;color:{{ h.chgCol }}">{{ h.chgS }}</span></span><span style="text-align:right;color:{{ h.chgCol }};display:{{ wideD }}">{{ h.chgS }}</span><span style="text-align:right;display:{{ wideD }}">{{ h.w }}</span></button>
+</sc-for>
+</div>
+</div>
+</sc-if>
+
+<!-- HOLDINGS -->
+<sc-if value="{{ isHoldings }}" hint-placeholder-val="{{ false }}">
+<div data-screen-label="Holdings" style="padding:{{ pad }};display:flex;flex-direction:column;gap:16px">
+<div style="display:flex;justify-content:space-between;align-items:flex-end;gap:16px;flex-wrap:wrap">
+<div style="display:flex;flex-direction:column;gap:6px;flex:1;min-width:240px"><div style="font-size:12px;font-weight:800;letter-spacing:0.08em;text-transform:uppercase">{{ t.holdings }}</div><div style="font-size:44px;font-weight:800;letter-spacing:-0.03em;line-height:1.05">{{ fTotal }}</div><div style="font-size:13px;color:var(--color-neutral-800)">{{ fShare }} {{ t.ofNW }} · {{ liveS }}</div></div>
+<div style="display:flex;gap:8px;flex-wrap:wrap"><button onClick="{{ refresh }}" style="background:transparent;border:2px solid var(--color-text);font-weight:800;font-size:14px;padding:8px 12px;cursor:pointer;color:var(--color-text);text-align:left" style-hover="background:var(--color-neutral-200)">{{ refreshLabel }}</button><button onClick="{{ newBank }}" style="background:transparent;border:2px solid var(--color-text);font-weight:800;font-size:14px;padding:8px 12px;cursor:pointer;color:var(--color-text);text-align:left" style-hover="background:var(--color-neutral-200)">{{ t.addBank }}</button><button onClick="{{ newHolding }}" style="background:var(--color-accent);color:var(--color-bg);border:0;font-weight:800;font-size:14px;padding:10px 14px;cursor:pointer;text-align:left" style-hover="background:var(--color-accent-600)">{{ t.addHolding }}</button></div>
+</div>
+<div style="display:flex;flex-wrap:wrap;gap:8px"><sc-for list="{{ filters }}" as="f" hint-placeholder-count="9"><button onClick="{{ f.set }}" style="font-weight:800;font-size:13px;padding:7px 12px;border:2px solid var(--color-text);cursor:pointer;text-align:left;background:{{ f.bg }};color:{{ f.fg }}">{{ f.name }} <span style="font-weight:400">{{ f.count }}</span></button></sc-for></div>
+<div>
+<div style="display:grid;grid-template-columns:{{ rowColsH }};gap:12px;font-size:12px;font-weight:800;letter-spacing:0.06em;text-transform:uppercase;padding:8px 0;border-bottom:2px solid var(--color-text)"><span>{{ t.instrument }}</span><span style="display:{{ wideD }}">{{ t.cls }}</span><span style="display:{{ wideD }}">{{ t.qty }}</span><span style="text-align:right;display:{{ wideD }}">{{ t.price }}</span><span style="text-align:right">{{ t.value }}</span><span style="text-align:right;display:{{ wideD }}">{{ t.todayCol }}</span><span style="text-align:right;display:{{ wideD }}">{{ t.weight }}</span><span style="display:{{ wideD }}">{{ t.source }}</span></div>
+<sc-for list="{{ fRows }}" as="h" hint-placeholder-count="10">
+<button onClick="{{ h.open }}" style="width:100%;display:grid;grid-template-columns:{{ rowColsH }};gap:12px;font-size:14px;padding:12px 0;border:0;border-bottom:1px solid var(--color-divider);background:none;align-items:baseline;text-align:left;cursor:pointer;color:var(--color-text)" style-hover="background:var(--color-neutral-200)"><span><b>{{ h.name }}</b> <span style="color:var(--color-neutral-700);font-size:12px">{{ h.ticker }}</span><span style="display:{{ narrowD }};font-size:12px;color:var(--color-neutral-700)">{{ h.clsL }} · {{ h.qtyS }} · {{ h.src }}</span></span><span style="display:{{ wideD }}">{{ h.clsL }}</span><span style="display:{{ wideD }}">{{ h.qtyS }}</span><span style="text-align:right;display:{{ wideD }}">{{ h.priceS }}</span><span style="text-align:right"><b>{{ h.val }}</b><span style="display:{{ narrowD }};font-size:12px;color:{{ h.chgCol }}">{{ h.chgS }}</span></span><span style="text-align:right;color:{{ h.chgCol }};display:{{ wideD }}">{{ h.chgS }}</span><span style="text-align:right;display:{{ wideD }}">{{ h.w }}</span><span style="font-size:12px;display:{{ wideD }};color:{{ h.srcCol }};font-weight:600">{{ h.src }}</span></button>
+</sc-for>
+</div>
+</div>
+</sc-if>
+
+<!-- CASH FLOW -->
+<sc-if value="{{ isCash }}" hint-placeholder-val="{{ false }}">
+<div data-screen-label="Cash flow">
+<div style="padding:{{ pad }};display:flex;justify-content:space-between;align-items:flex-end;gap:16px;flex-wrap:wrap;border-bottom:2px solid var(--color-text)">
+<div style="display:flex;flex-direction:column;gap:4px"><div style="font-size:12px;font-weight:800;letter-spacing:0.08em;text-transform:uppercase">{{ t.totalCash }} · {{ bankCount }}</div><div style="font-size:44px;font-weight:800;letter-spacing:-0.03em;line-height:1">{{ cashS }}</div></div>
+<div style="display:flex;gap:8px;flex-wrap:wrap"><button onClick="{{ openImport }}" style="background:transparent;border:2px solid var(--color-text);font-weight:800;font-size:14px;padding:8px 12px;cursor:pointer;color:var(--color-text);text-align:left" style-hover="background:var(--color-neutral-200)">{{ t.import }}</button><button onClick="{{ newTxn }}" style="background:var(--color-accent);color:var(--color-bg);border:0;font-weight:800;font-size:14px;padding:10px 14px;cursor:pointer;text-align:left" style-hover="background:var(--color-accent-600)">{{ t.logTxn }}</button></div>
+</div>
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:2px;background:var(--color-bg);overflow:hidden;border-bottom:2px solid var(--color-text)">
+<sc-for list="{{ bankCells }}" as="b" hint-placeholder-count="4">
+<button onClick="{{ b.open }}" style="box-shadow:2px 0 0 var(--color-text),0 2px 0 var(--color-text),2px 2px 0 var(--color-text);background:var(--color-bg);border:0;text-align:left;cursor:pointer;color:var(--color-text);padding:20px 24px;display:flex;flex-direction:column;gap:4px" style-hover="background:var(--color-neutral-200)"><div style="font-size:13px;font-weight:800;text-transform:uppercase;letter-spacing:0.06em">{{ b.name }}</div><div style="font-size:13px;color:var(--color-neutral-800)">{{ b.label }} · {{ b.ccy }}</div><div style="font-size:26px;font-weight:800;letter-spacing:-0.02em;margin-top:6px">{{ b.balS }}</div><div style="font-size:12px;color:var(--color-neutral-700)">{{ b.conv }}</div></button>
+</sc-for>
+<button onClick="{{ newBank }}" style="box-shadow:2px 0 0 var(--color-text),0 2px 0 var(--color-text),2px 2px 0 var(--color-text);background:var(--color-bg);border:0;text-align:left;cursor:pointer;padding:20px 24px;font-weight:800;font-size:14px;color:var(--color-accent-700);display:flex;align-items:flex-start" style-hover="background:var(--color-neutral-200)">{{ t.addBank }}</button>
+</div>
+<div style="display:grid;grid-template-columns:{{ g21 }};gap:2px;background:var(--color-text);border-bottom:2px solid var(--color-text)">
+<div style="background:var(--color-bg);padding:{{ pad }};display:flex;flex-direction:column;gap:20px;min-width:0">
+<div style="display:flex;justify-content:space-between;align-items:center;gap:8px"><div style="font-size:12px;font-weight:800;letter-spacing:0.08em;text-transform:uppercase">{{ monthS }}</div><div style="display:flex;gap:4px"><button onClick="{{ prevMonth }}" style="width:44px;height:36px;border:2px solid var(--color-text);background:none;font-weight:800;cursor:pointer;color:var(--color-text)">←</button><button onClick="{{ nextMonth }}" style="width:44px;height:36px;border:2px solid var(--color-text);background:none;font-weight:800;cursor:pointer;color:var(--color-text)">→</button></div></div>
+<div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px">
+<div><div style="font-size:12px;color:var(--color-neutral-800)">{{ t.moneyIn }}</div><div style="font-size:26px;font-weight:800;letter-spacing:-0.02em">{{ mInS }}</div></div>
+<div><div style="font-size:12px;color:var(--color-neutral-800)">{{ t.moneyOut }}</div><div style="font-size:26px;font-weight:800;letter-spacing:-0.02em;color:var(--color-accent-700)">{{ mOutS }}</div></div>
+<div><div style="font-size:12px;color:var(--color-neutral-800)">{{ t.net }}</div><div style="font-size:26px;font-weight:800;letter-spacing:-0.02em">{{ mNetS }}</div></div>
+</div>
+<div style="font-size:12px;font-weight:800;letter-spacing:0.08em;text-transform:uppercase">{{ t.spendingBy }}</div>
+<div style="display:flex;flex-direction:column;gap:8px"><sc-for list="{{ catBars }}" as="c" hint-placeholder-count="5"><div style="display:grid;grid-template-columns:110px 1fr 100px;gap:12px;align-items:center;font-size:13px"><span>{{ c.name }}</span><div style="height:12px;background:var(--color-neutral-200)"><div style="height:100%;width:{{ c.w }};background:var(--color-text)"></div></div><span style="text-align:right;font-weight:800">{{ c.v }}</span></div></sc-for></div>
+</div>
+<div style="background:var(--color-bg);padding:{{ pad }};display:flex;flex-direction:column;gap:12px">
+<div style="font-size:12px;font-weight:800;letter-spacing:0.08em;text-transform:uppercase">{{ t.salary }}</div>
+<div style="font-size:36px;font-weight:800;letter-spacing:-0.02em;line-height:1">{{ salaryS }}</div>
+<div style="display:flex;flex-direction:column;gap:6px;font-size:14px">
+<div style="display:flex;justify-content:space-between"><span>{{ t.payday }}</span><b>{{ paydayS }}</b></div>
+<div style="display:flex;justify-content:space-between"><span>{{ t.autoInvest }}</span><b>{{ salaryPct }} · {{ investS }}</b></div>
+<div style="display:flex;justify-content:space-between"><span>{{ t.mode }}</span><b>{{ salaryMode }}</b></div>
+<div style="display:flex;justify-content:space-between"><span>{{ t.into }}</span><b>{{ salaryBank }}</b></div>
+</div>
+<div style="font-size:13px;color:var(--color-neutral-800)">{{ salaryStatus }}</div>
+<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:auto"><button onClick="{{ logSalary }}" style="background:var(--color-accent);color:var(--color-bg);border:0;font-weight:800;font-size:14px;padding:10px 14px;cursor:pointer;text-align:left;flex:1" style-hover="background:var(--color-accent-600)">{{ t.logSalary }}</button><button onClick="{{ editSalary }}" style="background:transparent;border:2px solid var(--color-text);font-weight:800;font-size:14px;padding:8px 12px;cursor:pointer;color:var(--color-text);text-align:left" style-hover="background:var(--color-neutral-200)">{{ t.editSalary }}</button></div>
+</div>
+</div>
+<div style="padding:{{ pad }}">
+<div style="font-size:12px;font-weight:800;letter-spacing:0.08em;text-transform:uppercase;margin-bottom:12px">{{ t.txns }}</div>
+<sc-for list="{{ txRows }}" as="x" hint-placeholder-count="8">
+<div style="display:grid;grid-template-columns:{{ txCols }};gap:12px;font-size:14px;padding:10px 0;border-bottom:1px solid var(--color-divider);align-items:baseline"><span style="color:var(--color-neutral-800);font-size:13px">{{ x.dateS }}</span><span><b>{{ x.desc }}</b><span style="display:{{ narrowD }};font-size:12px;color:var(--color-neutral-700)">{{ x.bank }} · {{ x.cat }}</span></span><span style="display:{{ wideD }}">{{ x.bank }}</span><span style="display:{{ wideD }}"><span style="font-size:12px;font-weight:800;padding:2px 8px;background:{{ x.catBg }}">{{ x.cat }}</span></span><span style="text-align:right;font-weight:800;color:{{ x.col }}">{{ x.amtS }}</span><button onClick="{{ x.del }}" style="background:none;border:0;cursor:pointer;color:var(--color-neutral-700);font-size:13px;padding:0" style-hover="color:var(--color-accent-700)">✕</button></div>
+</sc-for>
+<sc-if value="{{ txEmpty }}"><div style="padding:24px 0;color:var(--color-neutral-800)">{{ t.noTx }}</div></sc-if>
+</div>
+</div>
+</sc-if>
+
+<!-- GOALS -->
+<sc-if value="{{ isGoals }}" hint-placeholder-val="{{ false }}">
+<div data-screen-label="Goals">
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:2px;background:var(--color-bg);overflow:hidden;border-bottom:2px solid var(--color-text)">
+<div style="box-shadow:2px 0 0 var(--color-text),0 2px 0 var(--color-text),2px 2px 0 var(--color-text);background:var(--color-bg);padding:{{ pad }}"><div style="font-size:12px;font-weight:800;letter-spacing:0.08em;text-transform:uppercase">{{ t.netWorth }}</div><div style="font-size:36px;font-weight:800;letter-spacing:-0.02em">{{ totalS }}</div></div>
+<div style="box-shadow:2px 0 0 var(--color-text),0 2px 0 var(--color-text),2px 2px 0 var(--color-text);background:var(--color-bg);padding:{{ pad }}"><div style="font-size:12px;font-weight:800;letter-spacing:0.08em;text-transform:uppercase">{{ t.monthly }}</div><div style="font-size:36px;font-weight:800;letter-spacing:-0.02em">{{ investS }}</div></div>
+<div style="box-shadow:2px 0 0 var(--color-text),0 2px 0 var(--color-text),2px 2px 0 var(--color-text);background:var(--color-bg);padding:{{ pad }}"><div style="font-size:12px;font-weight:800;letter-spacing:0.08em;text-transform:uppercase">{{ t.expReturn }} · {{ profileL }}</div><div style="font-size:36px;font-weight:800;letter-spacing:-0.02em">{{ retPct }}</div></div>
+</div>
+<div style="padding:{{ pad }};border-bottom:2px solid var(--color-text);display:flex;flex-direction:column;gap:12px">
+<div style="display:flex;justify-content:space-between;align-items:baseline;gap:12px;flex-wrap:wrap"><div style="font-size:12px;font-weight:800;letter-spacing:0.08em;text-transform:uppercase">{{ t.projection }}</div><div style="font-size:13px;color:var(--color-neutral-800)">{{ projNote }}</div></div>
+<svg viewBox="0 0 800 280" style="width:100%;display:block;overflow:visible">
+<sc-for list="{{ goalLines }}" as="gl"><line x1="0" x2="800" y1="{{ gl.y }}" y2="{{ gl.y }}" stroke="var(--color-text)" stroke-width="1" stroke-dasharray="4 4"></line><text x="4" y="{{ gl.ly }}" font-size="13" font-weight="800" fill="var(--color-text)">{{ gl.label }}</text><circle cx="{{ gl.x }}" cy="{{ gl.y }}" r="5" fill="var(--color-accent)"></circle></sc-for>
+<path d="{{ projArea }}" fill="var(--color-accent-100)"></path>
+<path d="{{ projLine }}" fill="none" stroke="var(--color-accent)" stroke-width="3"></path>
+</svg>
+<div style="display:flex;justify-content:space-between;font-size:12px;color:var(--color-neutral-700)"><sc-for list="{{ yearTicks }}" as="y" hint-placeholder-count="5"><span>{{ y }}</span></sc-for></div>
+</div>
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:2px;background:var(--color-bg);overflow:hidden;border-bottom:2px solid var(--color-text)">
+<sc-for list="{{ goals }}" as="g" hint-placeholder-count="3">
+<div style="box-shadow:2px 0 0 var(--color-text),0 2px 0 var(--color-text),2px 2px 0 var(--color-text);background:{{ g.cellBg }};padding:24px;display:flex;flex-direction:column;gap:10px">
+<div style="display:flex;justify-content:space-between;gap:8px"><span style="font-weight:800;font-size:18px">{{ g.name }}</span><span style="font-size:12px;font-weight:800;letter-spacing:0.06em;text-transform:uppercase;color:var(--color-accent-700)">{{ g.activeL }}</span></div>
+<div style="font-size:14px">{{ t.of }} {{ g.targetS }}</div>
+<div style="font-size:40px;font-weight:800;letter-spacing:-0.02em;line-height:1">{{ g.pct }}</div>
+<div style="height:8px;background:var(--color-neutral-300)"><div style="height:100%;width:{{ g.pct }};background:{{ g.barCol }}"></div></div>
+<div style="font-size:14px;color:var(--color-neutral-800)">{{ t.eta }} {{ g.eta }} · {{ g.gapS }}</div>
+<div style="display:flex;gap:8px;margin-top:4px"><button onClick="{{ g.activate }}" style="background:transparent;border:2px solid var(--color-text);font-weight:800;font-size:13px;padding:7px 10px;cursor:pointer;color:var(--color-text)" style-hover="background:var(--color-neutral-200)">{{ t.setActive }}</button><button onClick="{{ g.edit }}" style="background:none;border:0;font-weight:800;font-size:13px;padding:7px 4px;cursor:pointer;color:var(--color-accent-700)">{{ t.edit }}</button></div>
+</div>
+</sc-for>
+<button onClick="{{ newGoal }}" style="box-shadow:2px 0 0 var(--color-text),0 2px 0 var(--color-text),2px 2px 0 var(--color-text);background:var(--color-bg);border:0;text-align:left;cursor:pointer;padding:24px;font-weight:800;font-size:15px;color:var(--color-accent-700);display:flex;align-items:flex-start" style-hover="background:var(--color-neutral-200)">{{ t.newGoal }}</button>
+</div>
+</div>
+</sc-if>
+
+<!-- MARKETS -->
+<sc-if value="{{ isMarkets }}" hint-placeholder-val="{{ false }}">
+<div data-screen-label="Markets" style="display:grid;grid-template-columns:{{ gMk }};gap:2px;background:var(--color-text);border-bottom:2px solid var(--color-text)">
+<div style="background:var(--color-bg);display:flex;flex-direction:column">
+<div style="padding:20px 24px 12px;display:flex;justify-content:space-between;align-items:baseline"><div style="font-size:12px;font-weight:800;letter-spacing:0.08em;text-transform:uppercase">{{ t.watch }}</div><button onClick="{{ refresh }}" style="background:none;border:0;font-weight:800;font-size:13px;cursor:pointer;color:var(--color-accent-700);padding:0">{{ refreshLabel }}</button></div>
+<sc-for list="{{ watch }}" as="w" hint-placeholder-count="9">
+<button onClick="{{ w.go }}" style="display:grid;grid-template-columns:1fr auto;gap:2px 12px;padding:12px 24px;border:0;border-top:1px solid var(--color-divider);background:{{ w.bg }};text-align:left;cursor:pointer;color:var(--color-text)" style-hover="background:var(--color-neutral-200)"><b style="font-size:14px">{{ w.ticker }}</b><b style="font-size:14px;text-align:right">{{ w.priceS }}</b><span style="font-size:12px;color:var(--color-neutral-700)">{{ w.name }}</span><span style="font-size:12px;text-align:right;color:{{ w.chgCol }}">{{ w.chgS }}</span></button>
+</sc-for>
+<div style="padding:16px 24px;font-size:12px;color:var(--color-neutral-700);border-top:2px solid var(--color-text)">{{ t.mkNote }}</div>
+</div>
+<div style="background:var(--color-bg);display:flex;flex-direction:column;min-width:0">
+<div style="padding:16px 24px;border-bottom:2px solid var(--color-text);display:flex;justify-content:space-between;align-items:baseline;gap:12px"><b style="font-size:20px">{{ tvSym }}</b><span style="font-size:12px;color:var(--color-neutral-700)">TradingView</span></div>
+<div ref="{{ tvChartRef }}" class="tradingview-widget-container" style="height:{{ chartH }};width:100%"></div>
+</div>
+</div>
+</sc-if>
+
+<!-- ADVISOR -->
+<sc-if value="{{ isAdvisor }}" hint-placeholder-val="{{ false }}">
+<div data-screen-label="Advisor" style="display:grid;grid-template-columns:{{ gAdv }};gap:2px;background:var(--color-text);border-bottom:2px solid var(--color-text)">
+<div style="background:var(--color-bg);display:flex;flex-direction:column;min-width:0">
+<div style="padding:{{ pad }};display:flex;flex-direction:column;gap:16px;border-bottom:2px solid var(--color-text)">
+<div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap"><div style="font-size:12px;font-weight:800;letter-spacing:0.08em;text-transform:uppercase;color:var(--color-accent-700);white-space:nowrap">{{ t.brief }}</div><div style="display:flex;border:2px solid var(--color-text)"><sc-for list="{{ profiles }}" as="p" hint-placeholder-count="3"><button onClick="{{ p.set }}" style="font-weight:800;font-size:12px;padding:7px 10px;border:0;cursor:pointer;background:{{ p.bg }};color:{{ p.fg }}">{{ p.name }}</button></sc-for></div></div>
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px"><sc-for list="{{ brief }}" as="b" hint-placeholder-count="3"><div style="display:flex;flex-direction:column;gap:4px;padding-top:12px;border-top:2px solid var(--color-text)"><div style="font-size:11px;font-weight:800;letter-spacing:0.08em;text-transform:uppercase;color:var(--color-neutral-700)">{{ b.k }}</div><div style="font-size:16px;font-weight:800;line-height:1.25;text-wrap:pretty">{{ b.title }}</div><div style="font-size:13px;color:var(--color-neutral-800);text-wrap:pretty">{{ b.body }}</div></div></sc-for></div>
+<div style="display:flex;justify-content:space-between;font-size:12px;color:var(--color-neutral-800)"><span>{{ todayS }} · {{ briefSrc }}</span><button onClick="{{ regenBrief }}" style="background:none;border:0;font-weight:800;font-size:13px;cursor:pointer;color:var(--color-accent-700);padding:0">{{ regenLabel }}</button></div>
+</div>
+<div style="padding:{{ pad }};display:flex;flex-direction:column;gap:16px;flex:1;min-height:320px">
+<sc-if value="{{ chatEmpty }}"><div style="font-size:15px;color:var(--color-neutral-800);max-width:560px">{{ t.chatIntro }}</div></sc-if>
+<sc-for list="{{ chat }}" as="m" hint-placeholder-count="0">
+<div style="display:flex;flex-direction:column;gap:4px;padding:14px 16px;background:{{ m.bg }};max-width:720px"><div style="font-size:11px;font-weight:800;letter-spacing:0.08em;text-transform:uppercase;color:{{ m.whoCol }}">{{ m.who }}</div><div style="font-size:15px;line-height:1.55;white-space:pre-wrap;text-wrap:pretty">{{ m.text }}</div></div>
+</sc-for>
+<sc-if value="{{ chatBusy }}"><div style="font-size:14px;font-weight:800;color:var(--color-accent-700)">{{ t.thinking }}</div></sc-if>
+</div>
+<div style="padding:16px 24px 24px;border-top:2px solid var(--color-text);display:flex;flex-direction:column;gap:10px;position:sticky;bottom:0;background:var(--color-bg)">
+<div style="display:flex;gap:6px;flex-wrap:wrap"><sc-for list="{{ quick }}" as="q" hint-placeholder-count="3"><button onClick="{{ q.go }}" style="background:transparent;border:1px solid var(--color-divider);font-size:13px;padding:6px 10px;cursor:pointer;color:var(--color-text);text-align:left" style-hover="background:var(--color-neutral-200)">{{ q.text }}</button></sc-for></div>
+<div style="display:flex;gap:8px"><input value="{{ chatInput }}" onChange="{{ onChat }}" onKeyDown="{{ chatKey }}" placeholder="{{ t.chatPh }}" style="flex:1;min-width:0;min-height:48px;padding:8px 12px;font-size:15px;border:2px solid var(--color-text);background:var(--color-bg);color:var(--color-text)"><button onClick="{{ askNow }}" style="background:var(--color-accent);color:var(--color-bg);border:0;font-weight:800;font-size:15px;padding:0 20px;cursor:pointer" style-hover="background:var(--color-accent-600)">{{ t.ask }}</button></div>
+</div>
+</div>
+<div style="background:var(--color-bg);display:flex;flex-direction:column;min-width:0">
+<div style="padding:20px 24px;border-bottom:2px solid var(--color-text);font-size:12px;font-weight:800;letter-spacing:0.08em;text-transform:uppercase">{{ t.news }}</div>
+<div ref="{{ tvNewsRef }}" class="tradingview-widget-container" style="height:720px;width:100%"></div>
+</div>
+</div>
+</sc-if>
+
+<!-- SETTINGS -->
+<sc-if value="{{ isSettings }}" hint-placeholder-val="{{ false }}">
+<div data-screen-label="Settings" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:2px;background:var(--color-bg);overflow:hidden;border-bottom:2px solid var(--color-text)">
+<div style="box-shadow:2px 0 0 var(--color-text),0 2px 0 var(--color-text),2px 2px 0 var(--color-text);background:var(--color-bg);padding:24px;display:flex;flex-direction:column;gap:10px"><div style="font-size:12px;font-weight:800;letter-spacing:0.08em;text-transform:uppercase">{{ t.account }}</div><div style="font-size:22px;font-weight:800">{{ accName }}</div><div style="font-size:14px;color:var(--color-neutral-800)">{{ accEmail }} · PIN ••••••</div><div style="display:flex;gap:8px;margin-top:8px"><button onClick="{{ lock }}" style="background:transparent;border:2px solid var(--color-text);font-weight:800;font-size:13px;padding:8px 12px;cursor:pointer;color:var(--color-text)">{{ t.lock }}</button><button onClick="{{ changePin }}" style="background:transparent;border:2px solid var(--color-text);font-weight:800;font-size:13px;padding:8px 12px;cursor:pointer;color:var(--color-text)">{{ t.changePin }}</button><button onClick="{{ logout }}" style="background:none;border:0;font-weight:800;font-size:13px;padding:8px 4px;cursor:pointer;color:var(--color-accent-700)">{{ t.logout }}</button></div></div>
+<div style="box-shadow:2px 0 0 var(--color-text),0 2px 0 var(--color-text),2px 2px 0 var(--color-text);background:var(--color-bg);padding:24px;display:flex;flex-direction:column;gap:10px"><div style="font-size:12px;font-weight:800;letter-spacing:0.08em;text-transform:uppercase">{{ t.risk }}</div><div style="display:flex;border:2px solid var(--color-text);align-self:flex-start"><sc-for list="{{ profiles }}" as="p" hint-placeholder-count="3"><button onClick="{{ p.set }}" style="font-weight:800;font-size:13px;padding:8px 12px;border:0;cursor:pointer;background:{{ p.bg }};color:{{ p.fg }}">{{ p.name }}</button></sc-for></div><div style="font-size:14px;color:var(--color-neutral-800)">{{ profileDesc }}</div></div>
+<div style="box-shadow:2px 0 0 var(--color-text),0 2px 0 var(--color-text),2px 2px 0 var(--color-text);background:var(--color-bg);padding:24px;display:flex;flex-direction:column;gap:10px"><div style="font-size:12px;font-weight:800;letter-spacing:0.08em;text-transform:uppercase">{{ t.language }} · {{ t.currency }}</div><div style="display:flex;gap:8px"><div style="display:flex;border:2px solid var(--color-text)"><sc-for list="{{ langOpts }}" as="o" hint-placeholder-count="2"><button onClick="{{ o.set }}" style="font-weight:800;font-size:13px;padding:8px 12px;border:0;cursor:pointer;background:{{ o.bg }};color:{{ o.fg }}">{{ o.name }}</button></sc-for></div><div style="display:flex;border:2px solid var(--color-text)"><sc-for list="{{ curOpts }}" as="o" hint-placeholder-count="2"><button onClick="{{ o.set }}" style="font-weight:800;font-size:13px;padding:8px 12px;border:0;cursor:pointer;background:{{ o.bg }};color:{{ o.fg }}">{{ o.name }}</button></sc-for></div></div><div style="font-size:14px;color:var(--color-neutral-800)">USD/IDR {{ rateS }}</div></div>
+<div style="box-shadow:2px 0 0 var(--color-text),0 2px 0 var(--color-text),2px 2px 0 var(--color-text);background:var(--color-bg);padding:24px;display:flex;flex-direction:column;gap:10px"><div style="font-size:12px;font-weight:800;letter-spacing:0.08em;text-transform:uppercase">{{ t.apiKey }}</div><input value="{{ fhDraft }}" onChange="{{ onFh }}" placeholder="finnhub.io → API key" style="width:100%;min-height:44px;padding:8px 12px;font-size:14px;border:2px solid var(--color-text);background:var(--color-bg);color:var(--color-text)"><div style="display:flex;gap:8px;align-items:center"><button onClick="{{ saveFh }}" style="background:var(--color-accent);color:var(--color-bg);border:0;font-weight:800;font-size:13px;padding:9px 12px;cursor:pointer">{{ t.save }}</button><span style="font-size:13px;color:var(--color-neutral-800)">{{ fhStatus }}</span></div><div style="font-size:13px;color:var(--color-neutral-800)">{{ t.apiNote }}</div></div>
+<div style="box-shadow:2px 0 0 var(--color-text),0 2px 0 var(--color-text),2px 2px 0 var(--color-text);background:var(--color-bg);padding:24px;display:flex;flex-direction:column;gap:10px"><div style="font-size:12px;font-weight:800;letter-spacing:0.08em;text-transform:uppercase">{{ t.salary }}</div><div style="font-size:22px;font-weight:800">{{ salaryS }}</div><div style="font-size:14px;color:var(--color-neutral-800)">{{ t.payday }} {{ paydayS }} · {{ t.autoInvest }} {{ salaryPct }} · {{ salaryMode }}</div><button onClick="{{ editSalary }}" style="align-self:flex-start;background:transparent;border:2px solid var(--color-text);font-weight:800;font-size:13px;padding:8px 12px;cursor:pointer;color:var(--color-text)">{{ t.editSalary }}</button></div>
+<div style="box-shadow:2px 0 0 var(--color-text),0 2px 0 var(--color-text),2px 2px 0 var(--color-text);background:var(--color-bg);padding:24px;display:flex;flex-direction:column;gap:10px"><div style="font-size:12px;font-weight:800;letter-spacing:0.08em;text-transform:uppercase">Data</div><div style="font-size:14px;color:var(--color-neutral-800)">{{ t.dataNote }}</div><button onClick="{{ resetDemo }}" style="align-self:flex-start;background:none;border:0;font-weight:800;font-size:13px;padding:0;cursor:pointer;color:var(--color-accent-700)">{{ t.reset }}</button></div>
+</div>
+</sc-if>
+
+<!-- MODAL -->
+<sc-if value="{{ modalOpen }}" hint-placeholder-val="{{ false }}">
+<div onClick="{{ closeModal }}" style="position:fixed;inset:0;z-index:50;background:color-mix(in srgb,var(--color-text) 50%,transparent);display:flex;align-items:flex-start;justify-content:center;padding:6vh 16px;overflow:auto">
+<div onClick="{{ stop }}" style="width:100%;max-width:{{ modalW }};background:var(--color-bg);border:2px solid var(--color-text);box-shadow:var(--shadow-lg)">
+<div style="display:flex;justify-content:space-between;align-items:center;padding:16px 24px;border-bottom:2px solid var(--color-text)"><b style="font-size:20px">{{ modalTitle }}</b><button onClick="{{ closeModal }}" style="background:none;border:0;font-size:18px;cursor:pointer;color:var(--color-text);width:44px;height:44px;text-align:right">✕</button></div>
+<div style="padding:24px;display:flex;flex-direction:column;gap:16px">
+<sc-for list="{{ chipGroups }}" as="cg" hint-placeholder-count="0">
+<div style="display:flex;flex-direction:column;gap:6px"><span style="font-size:12px;color:var(--color-neutral-800)">{{ cg.label }}</span><div style="display:flex;flex-wrap:wrap;gap:6px"><sc-for list="{{ cg.opts }}" as="o"><button onClick="{{ o.set }}" style="font-weight:800;font-size:13px;padding:7px 11px;border:2px solid var(--color-text);cursor:pointer;background:{{ o.bg }};color:{{ o.fg }}">{{ o.name }}</button></sc-for></div></div>
+</sc-for>
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px"><sc-for list="{{ fields }}" as="fd" hint-placeholder-count="0"><label style="display:flex;flex-direction:column;gap:6px"><span style="font-size:12px;color:var(--color-neutral-800)">{{ fd.label }}</span><input type="{{ fd.type }}" value="{{ fd.value }}" onChange="{{ fd.on }}" placeholder="{{ fd.ph }}" style="width:100%;min-height:44px;padding:8px 12px;font-size:15px;border:2px solid var(--color-text);background:var(--color-bg);color:var(--color-text)"></label></sc-for></div>
+
+<sc-if value="{{ imPick }}">
+<div style="display:flex;flex-direction:column;gap:12px">
+<label style="display:flex;flex-direction:column;gap:6px;padding:20px;border:2px dashed var(--color-text);cursor:pointer"><b style="font-size:16px">{{ imFileLabel }}</b><span style="font-size:13px;color:var(--color-neutral-800)">{{ t.imFormats }}</span><input type="file" accept=".csv,.txt,.xlsx,.xls,.pdf" onChange="{{ onFile }}" style="display:none"></label>
+<label style="display:flex;flex-direction:column;gap:6px"><span style="font-size:12px;color:var(--color-neutral-800)">{{ t.pdfPw }}</span><input type="password" value="{{ imPw }}" onChange="{{ onPw }}" style="width:100%;min-height:44px;padding:8px 12px;font-size:15px;border:2px solid var(--color-text);background:var(--color-bg);color:var(--color-text)"></label>
+</div>
+</sc-if>
+<sc-if value="{{ imBusy }}"><div style="display:flex;flex-direction:column;gap:6px;padding:12px 0"><b style="font-size:18px;color:var(--color-accent-700)">{{ imBusyLabel }}</b><span style="font-size:13px;color:var(--color-neutral-800)">{{ t.imBusyNote }}</span></div></sc-if>
+<sc-if value="{{ imReview }}">
+<div style="display:flex;flex-direction:column;gap:12px">
+<div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;font-size:13px"><div>{{ t.txns }}<br><b style="font-size:20px">{{ imCount }}</b></div><div>{{ t.moneyIn }}<br><b style="font-size:20px">{{ imIn }}</b></div><div>{{ t.moneyOut }}<br><b style="font-size:20px;color:var(--color-accent-700)">{{ imOut }}</b></div></div>
+<sc-if value="{{ imSalaryFound }}"><div style="font-size:14px;font-weight:800;padding:10px 12px;background:var(--color-accent-100);color:var(--color-accent-800)">{{ imSalaryMsg }}</div></sc-if>
+<div style="max-height:340px;overflow:auto;border-top:2px solid var(--color-text);border-bottom:2px solid var(--color-text)">
+<sc-for list="{{ imRows }}" as="r" hint-placeholder-count="0">
+<div style="display:grid;grid-template-columns:24px 78px 1fr auto auto;gap:10px;align-items:center;padding:8px 0;border-bottom:1px solid var(--color-divider);font-size:13px;opacity:{{ r.op }}"><button onClick="{{ r.toggle }}" style="width:20px;height:20px;border:2px solid var(--color-text);background:{{ r.box }};cursor:pointer;padding:0"></button><span style="color:var(--color-neutral-800)">{{ r.date }}</span><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ r.desc }}</span><button onClick="{{ r.cycle }}" style="font-size:12px;font-weight:800;padding:3px 8px;border:1px solid var(--color-divider);background:{{ r.catBg }};cursor:pointer;color:var(--color-text)">{{ r.cat }}</button><b style="text-align:right;color:{{ r.col }}">{{ r.amtS }}</b></div>
+</sc-for>
+</div>
+<sc-if value="{{ imHasClosing }}"><button onClick="{{ toggleClosing }}" style="display:flex;gap:10px;align-items:center;background:none;border:0;padding:0;cursor:pointer;font-size:14px;color:var(--color-text);text-align:left"><span style="width:20px;height:20px;border:2px solid var(--color-text);background:{{ imClosingBox }};flex:none"></span>{{ imClosingMsg }}</button></sc-if>
+<div style="font-size:12px;color:var(--color-neutral-700)">{{ t.imTip }}</div>
+</div>
+</sc-if>
+<div style="font-size:13px;color:var(--color-neutral-800)">{{ modalNote }}</div>
+<div style="font-size:14px;font-weight:600;color:var(--color-accent-700)">{{ formErr }}</div>
+</div>
+<div style="display:flex;gap:8px;padding:16px 24px;border-top:2px solid var(--color-text);align-items:center">
+<sc-if value="{{ canDelete }}"><button onClick="{{ deleteModal }}" style="background:none;border:0;font-weight:800;font-size:14px;padding:10px 4px;cursor:pointer;color:var(--color-accent-700)">{{ t.del }}</button></sc-if>
+<span style="flex:1"></span>
+<button onClick="{{ closeModal }}" style="background:transparent;border:2px solid var(--color-text);font-weight:800;font-size:14px;padding:8px 14px;cursor:pointer;color:var(--color-text)">{{ t.cancel }}</button>
+<sc-if value="{{ canSave }}"><button onClick="{{ saveModal }}" style="background:var(--color-accent);color:var(--color-bg);border:0;font-weight:800;font-size:14px;padding:10px 16px;cursor:pointer;text-align:left" style-hover="background:var(--color-accent-600)">{{ saveLabel }}</button></sc-if>
+</div>
+</div>
+</div>
+</sc-if>
+</sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  static LS = 'nilai-app-v1';
+  static CATS = ['Salary', 'Income', 'Food', 'Transport', 'Bills', 'Shopping', 'Transfer', 'Investment', 'Other'];
+  static CLASSES = ['Crypto', 'IDX stocks', 'US stocks', 'ETF', 'Deposito', 'Reksa dana', 'Gold'];
+  static ORDER = ['Crypto', 'ETF', 'US stocks', 'Deposito', 'Reksa dana', 'Gold', 'IDX stocks', 'Cash'];
+  static COLS = ['var(--color-accent)', 'var(--color-neutral-900)', 'var(--color-neutral-700)', 'var(--color-accent-300)', 'var(--color-neutral-500)', 'var(--color-accent-700)', 'var(--color-neutral-400)', 'var(--color-neutral-300)'];
+  static CG = { BTC: 'bitcoin', ETH: 'ethereum', SOL: 'solana', BNB: 'binancecoin', XRP: 'ripple', DOGE: 'dogecoin', ADA: 'cardano', USDT: 'tether', USDC: 'usd-coin', AVAX: 'avalanche-2', DOT: 'polkadot', LINK: 'chainlink', TON: 'the-open-network', TRX: 'tron' };
+  static RET = { Conservative: 6, Balanced: 9, Aggressive: 12 };
+  static CAP = { Conservative: 0.1, Balanced: 0.2, Aggressive: 0.35 };
+  static T = {
+    en: { home: 'Dashboard', holdings: 'Holdings', cash: 'Cash flow', goals: 'Goals', markets: 'Markets', advisor: 'Advisor', settings: 'Settings', netWorth: 'Net worth', today: 'today', activeGoal: 'Active goal', of: 'of', eta: 'ETA', perMonth: '/month', newGoal: '+ New goal', allocation: 'Allocation', brief: "Today's brief", askAdvisor: 'Ask the advisor →', ofNW: 'of net worth', instrument: 'Instrument', cls: 'Class', qty: 'Quantity', price: 'Price', value: 'Value', todayCol: 'Today', weight: 'Weight', source: 'Source', addHolding: '+ Add holding', addBank: '+ Add bank account', history: 'Net worth · 12 months', investLine: 'invested from each salary', totalCash: 'Total cash', moneyIn: 'Money in', moneyOut: 'Money out', net: 'Net', salary: 'Salary', payday: 'Payday', autoInvest: 'Auto-invest', mode: 'Mode', into: 'Paid into', editSalary: 'Edit salary', logSalary: 'Log salary now', logTxn: '+ Log transaction', import: 'Import statement', txns: 'Transactions', spendingBy: 'Spending by category', noTx: 'No transactions this month.', projection: 'Projection to goals', expReturn: 'Expected return', monthly: 'Invested monthly', setActive: 'Set active', edit: 'Edit', chatPh: 'Ask about your money…', ask: 'Ask', news: 'Market news · TradingView', thinking: 'Thinking…', watch: 'Watchlist', risk: 'Risk profile', language: 'Language', currency: 'Currency', apiKey: 'Stock prices · Finnhub API key', apiNote: 'Free key from finnhub.io. Enables live prices for US stocks and ETFs, and IDX where your plan covers it. Without it, the price you enter is used.', lock: 'Lock', logout: 'Log out', changePin: 'Change PIN', save: 'Save', cancel: 'Cancel', del: 'Delete', account: 'Account', reset: 'Reset to demo data', dataNote: 'Stored on this device only in the prototype.', welcome: 'Every rupiah, counted toward the goal you set.', signup: 'Create your account', name: 'Name', cont: 'Continue', google: 'Continue with Google', otpT: 'Check your email', otpS: 'Enter the 6-digit code we sent to', otpNote: 'Prototype: any 6 digits will verify.', verify: 'Verify', setPin: 'Set a 6-digit PIN', setPinS: 'You will use it to open Nilai every day.', confirmPin: 'Enter the PIN again', enterPin: 'Enter your PIN', forgot: 'Forgot PIN? Verify with email', hi: 'Welcome back', chatIntro: 'Ask anything about your money. The advisor sees your holdings, bank balances, salary, goals and risk profile, with live crypto prices and the USD/IDR rate.', mkNote: 'Charts by TradingView. Crypto from CoinGecko and USD/IDR from open.er-api are live. Stocks are live with a Finnhub key.', imFormats: 'Bank statement as PDF, Excel (.xlsx) or CSV', pdfPw: 'PDF password (if protected — often your date of birth)', imBusyNote: 'Reading the file and sorting each transaction into a category.', imTip: 'Tap a category to change it. Untick rows you do not want to import.', reached: 'Reached' },
+    id: { home: 'Beranda', holdings: 'Aset', cash: 'Arus kas', goals: 'Target', markets: 'Pasar', advisor: 'Penasihat', settings: 'Pengaturan', netWorth: 'Kekayaan bersih', today: 'hari ini', activeGoal: 'Target aktif', of: 'dari', eta: 'Perkiraan', perMonth: '/bulan', newGoal: '+ Target baru', allocation: 'Alokasi', brief: 'Ringkasan hari ini', askAdvisor: 'Tanya penasihat →', ofNW: 'dari kekayaan', instrument: 'Instrumen', cls: 'Jenis', qty: 'Jumlah', price: 'Harga', value: 'Nilai', todayCol: 'Hari ini', weight: 'Porsi', source: 'Sumber', addHolding: '+ Tambah aset', addBank: '+ Tambah rekening', history: 'Kekayaan · 12 bulan', investLine: 'diinvestasikan dari tiap gaji', totalCash: 'Total kas', moneyIn: 'Uang masuk', moneyOut: 'Uang keluar', net: 'Bersih', salary: 'Gaji', payday: 'Tanggal gajian', autoInvest: 'Investasi otomatis', mode: 'Mode', into: 'Masuk ke', editSalary: 'Ubah gaji', logSalary: 'Catat gaji sekarang', logTxn: '+ Catat transaksi', import: 'Impor mutasi rekening', txns: 'Transaksi', spendingBy: 'Pengeluaran per kategori', noTx: 'Belum ada transaksi bulan ini.', projection: 'Proyeksi ke target', expReturn: 'Imbal hasil', monthly: 'Investasi bulanan', setActive: 'Jadikan aktif', edit: 'Ubah', chatPh: 'Tanya soal uangmu…', ask: 'Tanya', news: 'Berita pasar · TradingView', thinking: 'Sedang berpikir…', watch: 'Pantauan', risk: 'Profil risiko', language: 'Bahasa', currency: 'Mata uang', apiKey: 'Harga saham · API key Finnhub', apiNote: 'Key gratis dari finnhub.io. Mengaktifkan harga live saham AS dan ETF, serta IDX jika paketmu mendukung. Tanpa key, harga yang kamu isi yang dipakai.', lock: 'Kunci', logout: 'Keluar', changePin: 'Ganti PIN', save: 'Simpan', cancel: 'Batal', del: 'Hapus', account: 'Akun', reset: 'Kembalikan data demo', dataNote: 'Di prototipe, data hanya tersimpan di perangkat ini.', welcome: 'Setiap rupiah, dihitung menuju target yang kamu tetapkan.', signup: 'Buat akun', name: 'Nama', cont: 'Lanjut', google: 'Lanjut dengan Google', otpT: 'Cek email kamu', otpS: 'Masukkan kode 6 digit yang dikirim ke', otpNote: 'Prototipe: 6 digit apa pun akan lolos.', verify: 'Verifikasi', setPin: 'Buat PIN 6 digit', setPinS: 'Dipakai untuk membuka Nilai setiap hari.', confirmPin: 'Masukkan PIN sekali lagi', enterPin: 'Masukkan PIN', forgot: 'Lupa PIN? Verifikasi lewat email', hi: 'Selamat datang kembali', chatIntro: 'Tanya apa saja soal uangmu. Penasihat melihat aset, saldo bank, gaji, target, dan profil risikomu, dengan harga kripto dan kurs USD/IDR live.', mkNote: 'Grafik dari TradingView. Harga kripto (CoinGecko) dan kurs USD/IDR (open.er-api) live. Saham live dengan key Finnhub.', imFormats: 'Mutasi rekening dalam PDF, Excel (.xlsx) atau CSV', pdfPw: 'Password PDF (jika dikunci — biasanya tanggal lahir)', imBusyNote: 'Membaca file dan mengelompokkan setiap transaksi.', imTip: 'Ketuk kategori untuk mengubah. Hilangkan centang baris yang tidak ingin diimpor.', reached: 'Tercapai' }
+  };
+
+  seed() {
+    const n = new Date(), y = n.getFullYear(), m = n.getMonth();
+    const ds = (yy, mm, dd) => { const d = new Date(yy, mm, dd); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); };
+    const cd = (d) => ds(y, m, Math.min(d, n.getDate()));
+    return {
+      holdings: [
+        { id: 'h1', cls: 'Crypto', name: 'Bitcoin', ticker: 'BTC', qty: 0.05, price: 108000, ccy: 'USD', chg: 2.4, cg: 'bitcoin', tv: 'BINANCE:BTCUSDT' },
+        { id: 'h2', cls: 'Crypto', name: 'Ethereum', ticker: 'ETH', qty: 0.8, price: 3900, ccy: 'USD', chg: -1.2, cg: 'ethereum', tv: 'BINANCE:ETHUSDT' },
+        { id: 'h3', cls: 'ETF', name: 'Vanguard S&P 500', ticker: 'VOO', qty: 5, price: 560, ccy: 'USD', chg: 0.6, fh: 'VOO', tv: 'AMEX:VOO' },
+        { id: 'h4', cls: 'US stocks', name: 'NVIDIA', ticker: 'NVDA', qty: 12, price: 182, ccy: 'USD', chg: 1.8, fh: 'NVDA', tv: 'NASDAQ:NVDA' },
+        { id: 'h5', cls: 'US stocks', name: 'Apple', ticker: 'AAPL', qty: 8, price: 248, ccy: 'USD', chg: -0.4, fh: 'AAPL', tv: 'NASDAQ:AAPL' },
+        { id: 'h6', cls: 'Deposito', name: 'Deposito Bank Jago', ticker: '', qty: 1, price: 50e6, ccy: 'IDR', rate: 6, maturity: ds(y, m + 1, 2), chg: 0 },
+        { id: 'h7', cls: 'Reksa dana', name: 'RD Pasar Uang', ticker: 'Pasar uang', qty: 21840, price: 1144.7, ccy: 'IDR', chg: 0.01 },
+        { id: 'h8', cls: 'Gold', name: 'Emas Antam', ticker: 'Antam', qty: 10, price: 1950000, ccy: 'IDR', chg: 0.9, tv: 'OANDA:XAUUSD' },
+        { id: 'h9', cls: 'IDX stocks', name: 'Bank Central Asia', ticker: 'BBCA', qty: 2000, price: 9350, ccy: 'IDR', chg: -0.5, fh: 'BBCA.JK', tv: 'IDX:BBCA' },
+        { id: 'h10', cls: 'IDX stocks', name: 'Telkom Indonesia', ticker: 'TLKM', qty: 3000, price: 2980, ccy: 'IDR', chg: 1.0, fh: 'TLKM.JK', tv: 'IDX:TLKM' }
+      ],
+      banks: [
+        { id: 'b1', name: 'BCA', label: 'Tahapan', ccy: 'IDR', balance: 12.5e6 },
+        { id: 'b2', name: 'Mandiri', label: 'Tabungan', ccy: 'IDR', balance: 4e6 },
+        { id: 'b3', name: 'Bank Jago', label: 'Kantong utama', ccy: 'IDR', balance: 2e6 },
+        { id: 'b4', name: 'Jenius', label: 'USD account', ccy: 'USD', balance: 150 }
+      ],
+      txns: [
+        { id: 't1', date: ds(y, m - 1, 25), desc: 'Gaji', amount: 15e6, cat: 'Salary', bank: 'b1' },
+        { id: 't2', date: cd(1), desc: 'Kos bulanan', amount: -4.5e6, cat: 'Bills', bank: 'b1' },
+        { id: 't3', date: cd(3), desc: 'Top-up RD Pasar Uang', amount: -2e6, cat: 'Investment', bank: 'b1' },
+        { id: 't4', date: cd(5), desc: 'Superindo', amount: -650000, cat: 'Food', bank: 'b2' },
+        { id: 't5', date: cd(8), desc: 'Top-up GoPay', amount: -500000, cat: 'Transport', bank: 'b1' },
+        { id: 't6', date: cd(10), desc: 'Freelance project', amount: 2.5e6, cat: 'Income', bank: 'b3' },
+        { id: 't7', date: cd(12), desc: 'PLN token listrik', amount: -420000, cat: 'Bills', bank: 'b1' },
+        { id: 't8', date: cd(15), desc: 'Tokopedia', amount: -780000, cat: 'Shopping', bank: 'b2' },
+        { id: 't9', date: cd(16), desc: 'Makan malam', amount: -350000, cat: 'Food', bank: 'b2' }
+      ],
+      goals: [{ id: 'g1', name: 'Half-billion', target: 5e8 }, { id: 'g2', name: 'Rp 1 Miliar', target: 1e9 }, { id: 'g3', name: 'Retirement', target: 5e9 }],
+      activeGoal: 'g2',
+      salary: { amount: 15e6, payday: 25, pct: 40, auto: true, bank: 'b1' },
+      cur: 'IDR', lang: 'en', profile: 'Balanced', fhKey: '', brief: null, chat: []
+    };
+  }
+
+  state = this.init();
+  init() {
+    let saved = {};
+    try { saved = JSON.parse(localStorage.getItem(Component.LS) || '{}'); } catch (e) {}
+    const d = { ...this.seed(), ...saved };
+    const n = new Date();
+    return { ...d, auth: d.account && d.pin ? 'locked' : 'signup', pinBuf: '', pinTmp: '', authErr: '', tries: 0, signName: (d.account && d.account.name) || '', signEmail: (d.account && d.account.email) || '', otp: '', tab: 'home', filter: 'All', modal: null, form: {}, formErr: '', chatInput: '', chatBusy: false, briefBusy: false, live: {}, liveAt: null, fetching: false, narrow: typeof window !== 'undefined' && window.innerWidth < 1100, tvSymbol: 'BINANCE:BTCUSDT', fhDraft: d.fhKey || '', month: n.getFullYear() + '-' + String(n.getMonth() + 1).padStart(2, '0') };
+  }
+
+  componentDidMount() {
+    this._rs = () => { const nw = window.innerWidth < 1100; if (nw !== this.state.narrow) this.setState({ narrow: nw }); };
+    window.addEventListener('resize', this._rs);
+    this._kd = (e) => {
+      const a = this.state.auth;
+      if (!['setpin', 'confirmpin', 'locked'].includes(a)) return;
+      if (/^[0-9]$/.test(e.key)) this.pressKey(e.key); else if (e.key === 'Backspace') this.pressKey('del');
+    };
+    window.addEventListener('keydown', this._kd);
+    this.fetchPrices();
+  }
+  componentWillUnmount() { window.removeEventListener('resize', this._rs); window.removeEventListener('keydown', this._kd); }
+  componentDidUpdate() {
+    const s = this.state, keep = {};
+    ['account', 'pin', 'holdings', 'banks', 'txns', 'goals', 'activeGoal', 'salary', 'cur', 'lang', 'profile', 'fhKey', 'brief'].forEach(k => keep[k] = s[k]);
+    keep.chat = (s.chat || []).slice(-30);
+    try { localStorage.setItem(Component.LS, JSON.stringify(keep)); } catch (e) {}
+  }
+
+  tvChartRef = (el) => { this.tvChartEl = el; if (el) { el.dataset.sym = ''; this.loadChart(); } };
+  tvNewsRef = (el) => {
+    if (!el || el.dataset.loaded === this.state.lang) return;
+    el.dataset.loaded = this.state.lang; el.innerHTML = '';
+    const w = document.createElement('div'); w.className = 'tradingview-widget-container__widget'; w.style.height = '100%'; el.appendChild(w);
+    const sc = document.createElement('script'); sc.src = 'https://s3.tradingview.com/external-embedding/embed-widget-timeline.js'; sc.async = true;
+    sc.text = JSON.stringify({ feedMode: 'all_symbols', isTransparent: true, displayMode: 'regular', width: '100%', height: '100%', colorTheme: 'light', locale: this.state.lang === 'id' ? 'id_ID' : 'en' });
+    el.appendChild(sc);
+  };
+  loadChart() {
+    const el = this.tvChartEl; if (!el) return;
+    const sym = this.state.tvSymbol; if (el.dataset.sym === sym) return;
+    el.dataset.sym = sym; el.innerHTML = '';
+    const w = document.createElement('div'); w.className = 'tradingview-widget-container__widget'; w.style.height = '100%'; w.style.width = '100%'; el.appendChild(w);
+    const sc = document.createElement('script'); sc.src = 'https://s3.tradingview.com/external-embedding/embed-widget-advanced-chart.js'; sc.async = true;
+    sc.text = JSON.stringify({ autosize: true, symbol: sym, interval: 'D', timezone: 'Asia/Jakarta', theme: 'light', style: '1', locale: this.state.lang === 'id' ? 'id_ID' : 'en', allow_symbol_change: true, hide_side_toolbar: true, calendar: false, backgroundColor: 'rgba(243,242,242,1)', gridColor: 'rgba(32,30,29,0.06)' });
+    el.appendChild(sc);
+  }
+
+  async fetchPrices() {
+    if (this.state.fetching) return;
+    this.setState({ fetching: true });
+    const hs = this.state.holdings, live = { ...this.state.live };
+    try { const r = await fetch('https://open.er-api.com/v6/latest/USD').then(r => r.json()); if (r && r.rates && r.rates.IDR) live.USDIDR = { price: r.rates.IDR }; } catch (e) {}
+    const ids = [...new Set(hs.filter(h => h.cg).map(h => h.cg))];
+    if (ids.length) {
+      try {
+        const r = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=' + ids.join(',') + '&vs_currencies=usd&include_24hr_change=true').then(r => r.json());
+        ids.forEach(id => { if (r[id] && r[id].usd) live['cg:' + id] = { price: r[id].usd, chg: r[id].usd_24h_change }; });
+      } catch (e) {}
+    }
+    const key = this.state.fhKey;
+    if (key) {
+      await Promise.all(hs.filter(h => h.fh).map(async h => {
+        try { const q = await fetch('https://finnhub.io/api/v1/quote?symbol=' + encodeURIComponent(h.fh) + '&token=' + encodeURIComponent(key)).then(r => r.json()); if (q && q.c) live['fh:' + h.fh] = { price: q.c, chg: q.dp }; } catch (e) {}
+      }));
+    }
+    this.setState({ live, liveAt: new Date(), fetching: false });
+  }
+
+  fmt() {
+    const s = this.state, R = (s.live.USDIDR && s.live.USDIDR.price) || 16250, cur = s.cur;
+    const S = (v) => {
+      const neg = v < 0; v = Math.abs(v); let o;
+      if (cur === 'USD') { const u = v / R; o = u >= 1e6 ? '$' + (u / 1e6).toFixed(2) + 'M' : u >= 1e4 ? '$' + (u / 1e3).toFixed(1) + 'k' : '$' + Math.round(u).toLocaleString('en-US'); }
+      else if (v >= 1e9) o = 'Rp ' + (v / 1e9).toFixed(2).replace(/\.?0+$/, '').replace('.', ',') + ' M';
+      else if (v >= 1e6) o = 'Rp ' + (v / 1e6).toFixed(1).replace(/\.0$/, '').replace('.', ',') + ' jt';
+      else o = 'Rp ' + Math.round(v).toLocaleString('id-ID');
+      return (neg ? '−' : '') + o;
+    };
+    const L = (v) => cur === 'USD' ? '$' + Math.round(v / R).toLocaleString('en-US') : 'Rp ' + Math.round(v).toLocaleString('id-ID');
+    return { R, S, L };
+  }
+
+  compute() {
+    const s = this.state, K = Component, t = K.T[s.lang] || K.T.en, loc = s.lang === 'id' ? 'id-ID' : 'en-GB';
+    const { R, S, L } = this.fmt(), live = s.live;
+    const pct = (x) => (x * 100).toFixed(1).replace(/\.0$/, '') + '%';
+    const sgn = (x) => (x > 0 ? '+' : x < 0 ? '−' : '') + Math.abs(x).toFixed(1) + '%';
+    const col = (x) => x < 0 ? 'var(--color-accent-700)' : 'var(--color-text)';
+    const hs = s.holdings.map(h => {
+      const lk = h.cg ? live['cg:' + h.cg] : h.fh ? live['fh:' + h.fh] : null;
+      const price = lk && lk.price != null ? lk.price : (+h.price || 0);
+      const chg = lk && lk.chg != null ? lk.chg : (+h.chg || 0);
+      return { ...h, price, chg, idr: (+h.qty || 0) * price * (h.ccy === 'USD' ? R : 1), src: lk ? (h.cg ? 'Live · CoinGecko' : 'Live · Finnhub') : 'Manual', live: !!lk };
+    });
+    const bk = s.banks.map(b => ({ ...b, idr: (+b.balance || 0) * (b.ccy === 'USD' ? R : 1) }));
+    const cash = bk.reduce((a, b) => a + b.idr, 0);
+    const total = hs.reduce((a, h) => a + h.idr, 0) + cash;
+    const day = hs.reduce((a, h) => a + h.idr * h.chg / 100, 0);
+    const qtyS = h => h.cls === 'Crypto' ? (+h.qty) + ' ' + h.ticker : h.cls === 'IDX stocks' ? (h.qty / 100) + ' lot' : (h.cls === 'US stocks' || h.cls === 'ETF') ? (+h.qty) + ' sh' : h.cls === 'Deposito' ? (h.maturity ? '→ ' + new Date(h.maturity).toLocaleDateString(loc, { day: 'numeric', month: 'short' }) : '—') : h.cls === 'Gold' ? (+h.qty) + ' g' : (+h.qty).toLocaleString('en-US') + ' unit';
+    const priceS = h => h.cls === 'Deposito' ? (h.rate || 0) + '% p.a.' : (h.ccy === 'USD' ? '$' + (+h.price).toLocaleString('en-US', { maximumFractionDigits: 2 }) : 'Rp ' + (+h.price).toLocaleString('id-ID', { maximumFractionDigits: 2 }));
+    const rows = [...hs.map(h => ({ id: h.id, kind: 'holding', name: h.name, ticker: h.cls === 'Deposito' ? (h.rate || 0) + '% p.a.' : h.ticker, cls: h.cls, qtyS: qtyS(h), priceS: priceS(h), idr: h.idr, chg: h.chg, src: h.src, live: h.live })),
+      ...bk.map(b => ({ id: b.id, kind: 'bank', name: b.name, ticker: b.label, cls: 'Cash', qtyS: b.ccy === 'USD' ? '$' + (+b.balance).toLocaleString('en-US') : 'IDR', priceS: '—', idr: b.idr, chg: 0, src: 'Manual', live: false }))]
+      .map(r => ({ ...r, val: S(r.idr), w: pct(total ? r.idr / total : 0), chgS: r.cls === 'Cash' || r.cls === 'Deposito' ? '—' : sgn(r.chg), chgCol: col(r.chg), clsL: r.cls, srcCol: r.live ? 'var(--color-accent-700)' : 'var(--color-neutral-700)', open: () => r.kind === 'bank' ? this.openBank(r.id) : this.openHolding(r.id) }));
+    const classes = K.ORDER.map((c, i) => {
+      const its = rows.filter(r => r.cls === c), v = its.reduce((a, r) => a + r.idr, 0);
+      return { name: c, label: c, idr: v, val: S(v), wn: total ? v / total : 0, w: pct(total ? v / total : 0), col: K.COLS[i], filterGo: () => this.setState({ filter: c }) };
+    }).filter(c => c.idr > 0);
+    const invest = (+s.salary.amount || 0) * (+s.salary.pct || 0) / 100, retY = K.RET[s.profile], r = retY / 100 / 12;
+    const now = new Date();
+    const monthsTo = (target) => { let v = total, n = 0; while (v < target && n < 720) { v = v * (1 + r) + invest; n++; } return n; };
+    const etaS = (n) => n === 0 ? t.reached : n >= 720 ? '60+ yrs' : new Date(now.getFullYear(), now.getMonth() + n, 1).toLocaleDateString(loc, { month: 'short', year: 'numeric' });
+    const goals = s.goals.map(g => { const n = monthsTo(g.target), a = g.id === s.activeGoal; return { ...g, n, targetS: S(g.target), pct: pct(Math.min(1, total / g.target)), eta: etaS(n), gapS: total >= g.target ? t.reached : S(g.target - total) + (s.lang === 'id' ? ' lagi' : ' to go'), active: a, activeL: a ? t.activeGoal : '', cellBg: a ? 'var(--color-accent-100)' : 'var(--color-bg)', barCol: a ? 'var(--color-accent)' : 'var(--color-text)' }; });
+    const ag = goals.find(g => g.active) || goals[0] || { name: '—', targetS: '—', pct: '0%', eta: '—' };
+    // rule-based brief
+    const crypto = (classes.find(c => c.name === 'Crypto') || { wn: 0 }).wn, cap = K.CAP[s.profile], over = crypto - cap;
+    const dep = hs.find(h => h.cls === 'Deposito');
+    const id = s.lang === 'id';
+    const rb = [
+      over > 0.005
+        ? { k: id ? 'Rebalance' : 'Rebalance', title: id ? `Kripto ${pct(crypto)} dari uangmu. Pindahkan ${S(over * total)} ke VOO agar kembali di bawah batas ${pct(cap)}.` : `Crypto is ${pct(crypto)} of your money. Move ${S(over * total)} into VOO to get back under your ${pct(cap)} cap.`, body: id ? 'BTC dan ETH memberi sebagian besar kenaikan, juga sebagian besar gejolak.' : 'BTC and ETH drove most of the gain, and most of the swings.' }
+        : { k: 'Hold', title: id ? `Kripto ${pct(crypto)}, masih di bawah batas ${pct(cap)}.` : `Crypto at ${pct(crypto)} is inside your ${pct(cap)} cap.`, body: id ? 'Arahkan setoran gaji berikutnya ke ETF dan reksa dana.' : 'Send the next salary top-up to ETF and reksa dana.' },
+      dep ? { k: id ? 'Jatuh tempo' : 'Maturity', title: `${dep.name} ${id ? 'jatuh tempo' : 'matures'} ${new Date(dep.maturity).toLocaleDateString(loc, { day: 'numeric', month: 'short' })}.`, body: id ? `Perpanjang di ${dep.rate}% atau bandingkan dengan SBN ritel (ORI/SBR) berikutnya.` : `Roll over at ${dep.rate}%, or compare with the next retail government bond (ORI/SBR).` } : null,
+      { k: id ? 'Gajian' : 'Payday', title: id ? `Gaji tanggal ${s.salary.payday}: ${S(invest)} untuk diinvestasikan.` : `Salary on the ${s.salary.payday}th: ${S(invest)} to invest.`, body: s.profile === 'Conservative' ? '50% RD Pasar Uang, 30% deposito, 20% VOO.' : s.profile === 'Aggressive' ? '50% VOO, 30% NVDA/AAPL, 20% BTC.' : '50% VOO, 30% RD Pasar Uang, 20% BBCA.' }
+    ].filter(Boolean);
+    // month cash flow
+    const bankById = Object.fromEntries(s.banks.map(b => [b.id, b]));
+    const toIdr = (x) => (+x.amount || 0) * ((bankById[x.bank] || {}).ccy === 'USD' ? R : 1);
+    const txM = s.txns.filter(x => (x.date || '').startsWith(s.month)).sort((a, b) => b.date.localeCompare(a.date));
+    const mIn = txM.filter(x => x.amount > 0).reduce((a, x) => a + toIdr(x), 0), mOut = -txM.filter(x => x.amount < 0).reduce((a, x) => a + toIdr(x), 0);
+    return { t, loc, R, S, L, pct, sgn, col, hs, bk, cash, total, day, rows, classes, invest, retY, r, goals, ag, rb, txM, mIn, mOut, toIdr, bankById, monthsTo };
+  }
+
+  sysPrompt() {
+    const c = this.compute(), s = this.state, K = Component;
+    return `You are the advisor inside Nilai, a personal investment tracker for an Indonesian investor. Reply in ${s.lang === 'id' ? 'Bahasa Indonesia' : 'English'}. Be concise (under 170 words), specific and practical. Use IDR amounts written like "Rp 25 jt" or "Rp 1,2 M". Tailor everything to a ${s.profile} risk profile (crypto cap ${K.CAP[s.profile] * 100}%, assumed return ${K.RET[s.profile]}%/yr). Favour long-term, diversified, low-cost choices available to Indonesians (IDX stocks, reksa dana, SBN/ORI/SBR, deposito, gold, US ETFs via brokers, crypto via OJK-registered exchanges). You have no live news feed; base advice on the data below and long-term principles, and say so if asked about news. Plain text, no markdown headings or bold; short dashed lines are fine. End trade suggestions with a brief reminder that this is not licensed financial advice only once per answer.
+Today: ${new Date().toDateString()}. USD/IDR: ${Math.round(c.R)}.
+Net worth: Rp ${Math.round(c.total).toLocaleString('id-ID')} (24h change Rp ${Math.round(c.day).toLocaleString('id-ID')}).
+Holdings: ${c.rows.map(r => `${r.name} [${r.cls}] ${r.qtyS} = Rp ${Math.round(r.idr).toLocaleString('id-ID')} (${r.w}${r.cls === 'Cash' ? '' : ', 24h ' + r.chg.toFixed(1) + '%'})`).join('; ')}.
+Allocation: ${c.classes.map(x => x.name + ' ' + x.w).join(', ')}.
+Goals: ${c.goals.map(g => `${g.name} Rp ${g.target.toLocaleString('id-ID')} (${g.pct}, ETA ${g.eta}${g.active ? ', ACTIVE' : ''})`).join('; ')}.
+Salary: Rp ${(+s.salary.amount).toLocaleString('id-ID')} on day ${s.salary.payday}, auto-invest ${s.salary.pct}% (Rp ${Math.round(c.invest).toLocaleString('id-ID')}).
+This month: money in Rp ${Math.round(c.mIn).toLocaleString('id-ID')}, money out Rp ${Math.round(c.mOut).toLocaleString('id-ID')}.`;
+  }
+
+  async genBrief(force) {
+    const s = this.state, today = new Date().toISOString().slice(0, 10);
+    if (s.briefBusy || !window.claude) return;
+    if (!force && s.brief && s.brief.date === today && s.brief.lang === s.lang && s.brief.profile === s.profile) return;
+    this.setState({ briefBusy: true });
+    try {
+      const txt = await window.claude.complete({ system: this.sysPrompt(), max_tokens: 900, messages: [{ role: 'user', content: 'Write my brief for today: exactly 3 items, most important first (e.g. rebalance, upcoming maturity, what to do with salary, a risk to watch, a long-term opportunity). Return ONLY JSON: {"items":[{"k":"one or two word label","title":"one sentence with a specific action and IDR amount","body":"one or two short sentences explaining why"}]}' }] });
+      const j = JSON.parse(txt.match(/\{[\s\S]*\}/)[0]);
+      this.setState({ brief: { date: today, lang: s.lang, profile: s.profile, at: new Date().toLocaleTimeString(this.compute().loc, { hour: '2-digit', minute: '2-digit' }), items: j.items.slice(0, 3) }, briefBusy: false });
+    } catch (e) { this.setState({ briefBusy: false }); }
+  }
+
+  async ask(q) {
+    q = (q || this.state.chatInput || '').trim();
+    if (!q || this.state.chatBusy) return;
+    const chat = [...this.state.chat, { role: 'user', content: q }];
+    this.setState({ chat, chatInput: '', chatBusy: true, tab: 'advisor' });
+    try {
+      const text = await window.claude.complete({ system: this.sysPrompt(), max_tokens: 900, messages: chat.slice(-12).map(m => ({ role: m.role, content: m.content })) });
+      this.setState(s => ({ chat: [...s.chat, { role: 'assistant', content: text.trim() }], chatBusy: false }));
+    } catch (e) {
+      this.setState(s => ({ chat: [...s.chat, { role: 'assistant', content: 'The advisor is unavailable right now (' + (e.message || e) + '). Try again in a minute.' }], chatBusy: false }));
+    }
+  }
+
+  // ---------- auth ----------
+  signup() {
+    const s = this.state, em = (s.signEmail || '').trim();
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(em)) return this.setState({ authErr: s.lang === 'id' ? 'Masukkan email yang valid.' : 'Enter a valid email.' });
+    this.setState({ auth: 'otp', otp: '', authErr: '' });
+  }
+  verifyOtp() {
+    if (!/^\d{6}$/.test(this.state.otp)) return this.setState({ authErr: this.state.lang === 'id' ? 'Kode harus 6 digit.' : 'The code is 6 digits.' });
+    this.setState({ auth: 'setpin', pinBuf: '', authErr: '' });
+  }
+  pressKey(k) {
+    const s = this.state;
+    if (k === 'del') return this.setState({ pinBuf: s.pinBuf.slice(0, -1), authErr: '' });
+    if (s.pinBuf.length >= 6) return;
+    const buf = s.pinBuf + k;
+    this.setState({ pinBuf: buf, authErr: '' });
+    if (buf.length < 6) return;
+    setTimeout(() => {
+      const st = this.state, id = st.lang === 'id';
+      if (st.auth === 'setpin') this.setState({ pinTmp: buf, pinBuf: '', auth: 'confirmpin' });
+      else if (st.auth === 'confirmpin') {
+        if (buf === st.pinTmp) { this.setState({ pin: buf, pinBuf: '', pinTmp: '', auth: 'in', tries: 0, account: { name: st.signName || st.signEmail.split('@')[0], email: st.signEmail } }, () => this.afterIn()); }
+        else this.setState({ pinBuf: '', pinTmp: '', auth: 'setpin', authErr: id ? 'PIN tidak cocok. Coba lagi.' : 'PINs did not match. Try again.' });
+      } else if (st.auth === 'locked') {
+        if (buf === st.pin) this.setState({ auth: 'in', pinBuf: '', tries: 0 }, () => this.afterIn());
+        else { const tr = st.tries + 1; if (tr >= 5) this.setState({ auth: 'otp', otp: '', pinBuf: '', tries: 0, authErr: id ? 'Terlalu banyak percobaan. Verifikasi email lagi.' : 'Too many attempts. Verify your email again.' }); else this.setState({ pinBuf: '', tries: tr, authErr: (id ? 'PIN salah. Sisa ' : 'Wrong PIN. ') + (5 - tr) + (id ? ' percobaan.' : ' tries left.') }); }
+      }
+    }, 140);
+  }
+  afterIn() { this.autoSalary(); this.genBrief(false); }
+  autoSalary() {
+    const s = this.state, n = new Date(), ym = n.getFullYear() + '-' + String(n.getMonth() + 1).padStart(2, '0');
+    if (!s.salary.auto || n.getDate() < +s.salary.payday) return;
+    if (s.txns.some(x => x.cat === 'Salary' && x.date.startsWith(ym))) return;
+    this.addSalary();
+  }
+  addSalary() {
+    const s = this.state, n = new Date(), date = n.getFullYear() + '-' + String(n.getMonth() + 1).padStart(2, '0') + '-' + String(n.getDate()).padStart(2, '0');
+    const amt = +s.salary.amount || 0, bid = s.salary.bank || (s.banks[0] && s.banks[0].id);
+    this.setState({ txns: [...s.txns, { id: 't' + Date.now(), date, desc: s.lang === 'id' ? 'Gaji' : 'Salary', amount: amt, cat: 'Salary', bank: bid }], banks: s.banks.map(b => b.id === bid ? { ...b, balance: (+b.balance) + amt } : b) });
+  }
+
+  // ---------- modals ----------
+  setF(k, v) { this.setState(s => ({ form: { ...s.form, [k]: v }, formErr: '' })); }
+  openHolding(id) {
+    const h = id && this.state.holdings.find(x => x.id === id);
+    this.setState({ modal: { type: 'holding', id: id || null }, formErr: '', form: h ? { cls: h.cls, name: h.name, ticker: h.ticker, qty: String(h.qty), price: String(h.price), ccy: h.ccy, rate: String(h.rate || ''), maturity: h.maturity || '' } : { cls: 'Crypto', name: '', ticker: '', qty: '', price: '', ccy: 'USD', rate: '', maturity: '' } });
+  }
+  openBank(id) { const b = id && this.state.banks.find(x => x.id === id); this.setState({ modal: { type: 'bank', id: id || null }, formErr: '', form: b ? { name: b.name, label: b.label, ccy: b.ccy, balance: String(b.balance) } : { name: '', label: '', ccy: 'IDR', balance: '' } }); }
+  openGoal(id) { const g = id && this.state.goals.find(x => x.id === id); this.setState({ modal: { type: 'goal', id: id || null }, formErr: '', form: g ? { name: g.name, target: String(g.target) } : { name: '', target: '' } }); }
+  openTxn() { const n = new Date(); this.setState({ modal: { type: 'txn' }, formErr: '', form: { date: n.toISOString().slice(0, 10), desc: '', amount: '', dir: 'Out', cat: 'Food', bank: this.state.banks[0] && this.state.banks[0].id } }); }
+  openSalary() { const s = this.state.salary; this.setState({ modal: { type: 'salary' }, formErr: '', form: { amount: String(s.amount), payday: String(s.payday), pct: String(s.pct), auto: s.auto, bank: s.bank } }); }
+  openImport() { this.importFile = null; this.setState({ modal: { type: 'import', step: 'pick', rows: [], fileName: '', pw: '', closing: null, useClosing: true }, formErr: '', form: { bank: this.state.banks[0] && this.state.banks[0].id } }); }
+  setM(p) { this.setState(s => ({ modal: { ...s.modal, ...p } })); }
+
+  saveModal() {
+    const s = this.state, m = s.modal, f = s.form, id = s.lang === 'id', K = Component;
+    const bad = (msg) => this.setState({ formErr: msg });
+    if (m.type === 'holding') {
+      const T = (f.ticker || '').trim().toUpperCase();
+      const dep = f.cls === 'Deposito';
+      if (!(f.name || T)) return bad(id ? 'Isi nama atau ticker.' : 'Enter a name or ticker.');
+      if (!dep && !(+f.qty > 0)) return bad(id ? 'Jumlah harus lebih dari 0.' : 'Quantity must be above 0.');
+      if (!(+f.price > 0)) return bad(id ? 'Isi harga / pokok.' : 'Enter a price or principal.');
+      const prev = m.id ? s.holdings.find(x => x.id === m.id) : {};
+      const h = { id: m.id || 'h' + Date.now(), cls: f.cls, name: (f.name || T).trim(), ticker: T, qty: dep ? 1 : +f.qty, price: +f.price, ccy: dep ? 'IDR' : f.ccy, chg: prev.chg || 0 };
+      if (dep) { h.rate = +f.rate || 0; h.maturity = f.maturity; h.ticker = ''; }
+      if (f.cls === 'Crypto' && T) { h.cg = K.CG[T]; h.tv = 'BINANCE:' + T + 'USDT'; }
+      if ((f.cls === 'US stocks' || f.cls === 'ETF') && T) { h.fh = T; h.tv = T; }
+      if (f.cls === 'IDX stocks' && T) { h.fh = T + '.JK'; h.tv = 'IDX:' + T; }
+      if (f.cls === 'Gold') h.tv = 'OANDA:XAUUSD';
+      this.setState({ holdings: m.id ? s.holdings.map(x => x.id === m.id ? h : x) : [...s.holdings, h], modal: null }, () => this.fetchPrices());
+    } else if (m.type === 'bank') {
+      if (!f.name.trim()) return bad(id ? 'Isi nama bank.' : 'Enter the bank name.');
+      const b = { id: m.id || 'b' + Date.now(), name: f.name.trim(), label: (f.label || '').trim() || (id ? 'Tabungan' : 'Savings'), ccy: f.ccy, balance: +f.balance || 0 };
+      this.setState({ banks: m.id ? s.banks.map(x => x.id === m.id ? b : x) : [...s.banks, b], modal: null });
+    } else if (m.type === 'goal') {
+      if (!f.name.trim() || !(+f.target > 0)) return bad(id ? 'Isi nama dan target.' : 'Enter a name and target amount.');
+      const g = { id: m.id || 'g' + Date.now(), name: f.name.trim(), target: +f.target };
+      this.setState({ goals: m.id ? s.goals.map(x => x.id === m.id ? g : x) : [...s.goals, g], activeGoal: s.activeGoal || g.id, modal: null });
+    } else if (m.type === 'txn') {
+      if (!(+f.amount > 0) || !f.desc.trim()) return bad(id ? 'Isi deskripsi dan jumlah.' : 'Enter a description and amount.');
+      const amt = (f.dir === 'Out' ? -1 : 1) * +f.amount;
+      this.setState({ txns: [...s.txns, { id: 't' + Date.now(), date: f.date, desc: f.desc.trim(), amount: amt, cat: f.cat, bank: f.bank }], banks: s.banks.map(b => b.id === f.bank ? { ...b, balance: (+b.balance) + amt } : b), modal: null, month: f.date.slice(0, 7) });
+    } else if (m.type === 'salary') {
+      if (!(+f.amount > 0)) return bad(id ? 'Isi jumlah gaji.' : 'Enter your salary.');
+      this.setState({ salary: { amount: +f.amount, payday: Math.min(31, Math.max(1, +f.payday || 25)), pct: Math.min(100, Math.max(0, +f.pct || 0)), auto: f.auto, bank: f.bank }, modal: null });
+    } else if (m.type === 'import') {
+      if (m.step === 'pick') return this.runImport();
+      if (m.step === 'review') {
+        const inc = m.rows.filter(r => r.inc);
+        const add = inc.map((r, i) => ({ id: 't' + Date.now() + '_' + i, date: r.date, desc: r.desc, amount: r.amount, cat: r.cat, bank: f.bank, src: 'import' }));
+        const banks = (m.useClosing && m.closing != null) ? s.banks.map(b => b.id === f.bank ? { ...b, balance: m.closing } : b) : s.banks;
+        const lastMonth = inc.length ? inc.map(r => r.date).sort().pop().slice(0, 7) : s.month;
+        this.setState({ txns: [...s.txns, ...add], banks, modal: null, month: lastMonth });
+      }
+    }
+  }
+  deleteModal() {
+    const s = this.state, m = s.modal;
+    if (m.type === 'holding') this.setState({ holdings: s.holdings.filter(x => x.id !== m.id), modal: null });
+    if (m.type === 'bank') this.setState({ banks: s.banks.filter(x => x.id !== m.id), modal: null });
+    if (m.type === 'goal') this.setState({ goals: s.goals.filter(x => x.id !== m.id), activeGoal: s.activeGoal === m.id ? ((s.goals.find(x => x.id !== m.id) || {}).id || null) : s.activeGoal, modal: null });
+  }
+
+  async runImport() {
+    const f = this.importFile, id = this.state.lang === 'id';
+    if (!f) return this.setState({ formErr: id ? 'Pilih file dulu.' : 'Choose a file first.' });
+    if (!window.claude) return this.setState({ formErr: 'AI is not available in this view.' });
+    this.setM({ step: 'busy' }); this.setState({ formErr: '' });
+    try {
+      const ext = f.name.split('.').pop().toLowerCase();
+      let text = '';
+      if (ext === 'csv' || ext === 'txt') text = await f.text();
+      else if (ext === 'xlsx' || ext === 'xls') {
+        if (!window.XLSX) throw new Error('Excel reader did not load.');
+        const wb = window.XLSX.read(await f.arrayBuffer());
+        text = wb.SheetNames.map(n => window.XLSX.utils.sheet_to_csv(wb.Sheets[n])).join('\n');
+      } else if (ext === 'pdf') {
+        const lib = window.pdfjsLib; if (!lib) throw new Error('PDF reader did not load.');
+        lib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+        const doc = await lib.getDocument({ data: new Uint8Array(await f.arrayBuffer()), password: this.state.modal.pw || undefined }).promise;
+        for (let i = 1; i <= doc.numPages; i++) {
+          const c = await (await doc.getPage(i)).getTextContent();
+          let lastY = null;
+          c.items.forEach(it => { const y = Math.round(it.transform[5]); text += (lastY !== null && Math.abs(y - lastY) > 2 ? '\n' : ' ') + it.str; lastY = y; });
+          text += '\n';
+        }
+      } else throw new Error(id ? 'Format tidak didukung.' : 'Unsupported file type.');
+      if (!text.trim()) throw new Error(id ? 'Tidak ada teks terbaca. PDF hasil scan belum didukung.' : 'No readable text. Scanned PDFs are not supported.');
+      const out = await window.claude.complete({ max_tokens: 8000, messages: [{ role: 'user', content: 'Extract every transaction from this Indonesian/other bank statement. Amounts: positive for money in (CR/kredit), negative for money out (DB/debet), as plain numbers in the account currency (convert "1.250.000,00" to 1250000). Dates as YYYY-MM-DD (infer the year from the statement period). Category must be one of: Salary, Income, Food, Transport, Bills, Shopping, Transfer, Investment, Other. Mark payroll/gaji/salary credits as Salary. Skip opening/closing balance lines. Return ONLY JSON: {"transactions":[{"date":"","desc":"short description","amount":0,"category":""}],"closingBalance":number or null}\n\nSTATEMENT:\n' + text.slice(0, 40000) }] });
+      const j = JSON.parse(out.match(/\{[\s\S]*\}/)[0]);
+      const rows = (j.transactions || []).filter(x => x && x.date && isFinite(+x.amount)).map((x, i) => ({ i, date: x.date, desc: String(x.desc || '').slice(0, 80), amount: +x.amount, cat: Component.CATS.includes(x.category) ? x.category : 'Other', inc: true }));
+      if (!rows.length) throw new Error(id ? 'Tidak ada transaksi ditemukan.' : 'No transactions found in this file.');
+      this.setM({ step: 'review', rows, closing: isFinite(+j.closingBalance) && j.closingBalance != null ? +j.closingBalance : null });
+    } catch (e) {
+      const pw = e && e.name === 'PasswordException';
+      this.setM({ step: 'pick' });
+      this.setState({ formErr: pw ? (id ? 'PDF ini dikunci. Isi password di atas lalu coba lagi.' : 'This PDF is password-protected. Enter the password above and try again.') : (e.message || String(e)) });
+    }
+  }
+
+  renderVals() {
+    const s = this.state, K = Component, c = this.compute(), t = c.t, S = c.S, id = s.lang === 'id';
+    const tone = (a) => ({ bg: a ? 'var(--color-text)' : 'transparent', fg: a ? 'var(--color-bg)' : 'var(--color-text)' });
+    const narrow = s.narrow;
+    // auth
+    const pinMode = ['setpin', 'confirmpin', 'locked'].includes(s.auth);
+    const keys = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '', '0', '⌫'].map(k => ({ label: k, vis: k ? 'visible' : 'hidden', press: () => k && this.pressKey(k === '⌫' ? 'del' : k) }));
+    // filters / rows
+    const filter = s.filter;
+    const fRows = filter === 'All' ? c.rows : c.rows.filter(r => r.cls === filter);
+    const fT = fRows.reduce((a, r) => a + r.idr, 0);
+    const filters = ['All', 'Crypto', 'IDX stocks', 'US stocks', 'ETF', 'Cash', 'Deposito', 'Reksa dana', 'Gold'].map(f => ({ name: f === 'All' ? (id ? 'Semua' : 'All') : f, count: f === 'All' ? c.rows.length : c.rows.filter(r => r.cls === f).length, ...tone(f === filter), set: () => this.setState({ filter: f }) })).filter(f => f.count > 0 || f.name === 'All');
+    // history chart
+    const hist = [0.74, 0.76, 0.75, 0.79, 0.82, 0.8, 0.85, 0.88, 0.86, 0.91, 0.95, 0.97, 1].map(m => m * c.total);
+    const path = (vals, h, min, max, step, x0 = 0) => vals.map((v, i) => (i ? 'L' : 'M') + (x0 + i * step).toFixed(1) + ',' + (h - (v - min) / ((max - min) || 1) * h).toFixed(1)).join(' ');
+    const histLine = path(hist, 180, c.total * 0.7, c.total * 1.03, 760 / 12);
+    // projection
+    const maxN = Math.min(360, Math.max(24, ...c.goals.filter(g => g.n < 720).map(g => g.n + 6)));
+    const proj = [c.total]; for (let i = 0; i < maxN; i++) proj.push(proj[i] * (1 + c.r) + c.invest);
+    const PM = Math.max(proj[proj.length - 1], ...c.goals.filter(g => g.n <= maxN).map(g => g.target)) * 1.05 || 1;
+    const st = 800 / maxN, Y = (v) => 280 - v / PM * 280;
+    const projLine = path(proj, 280, 0, PM, st);
+    const now = new Date();
+    const yearTicks = [0, 0.25, 0.5, 0.75, 1].map(f => new Date(now.getFullYear(), now.getMonth() + Math.round(maxN * f), 1).getFullYear() + (f === 0 ? (id ? ' · kini' : ' · now') : ''));
+    const goalLines = c.goals.filter(g => g.target <= PM).map(g => ({ y: Y(g.target).toFixed(1), ly: (Y(g.target) - 6).toFixed(1), x: Math.min(800, g.n * st).toFixed(1), label: g.name + ' · ' + g.targetS }));
+    // cash
+    const [yy, mm] = s.month.split('-').map(Number);
+    const shiftM = (d) => { const x = new Date(yy, mm - 1 + d, 1); this.setState({ month: x.getFullYear() + '-' + String(x.getMonth() + 1).padStart(2, '0') }); };
+    const outs = {}; c.txM.filter(x => x.amount < 0).forEach(x => { outs[x.cat] = (outs[x.cat] || 0) - c.toIdr(x); });
+    const outMax = Math.max(1, ...Object.values(outs));
+    const catBars = Object.entries(outs).sort((a, b) => b[1] - a[1]).map(([k, v]) => ({ name: k, v: S(v), w: (v / outMax * 100).toFixed(1) + '%' }));
+    const txRows = c.txM.map(x => { const b = c.bankById[x.bank] || { name: '—', ccy: 'IDR' }; const amtIdr = c.toIdr(x); return { dateS: new Date(x.date).toLocaleDateString(c.loc, { day: 'numeric', month: 'short' }), desc: x.desc, bank: b.name, cat: x.cat, catBg: x.cat === 'Salary' ? 'var(--color-accent-200)' : 'var(--color-neutral-200)', amtS: (x.amount > 0 ? '+' : '') + S(amtIdr), col: x.amount < 0 ? 'var(--color-text)' : 'var(--color-accent-700)', del: () => this.setState(st2 => ({ txns: st2.txns.filter(z => z.id !== x.id), banks: st2.banks.map(bb => bb.id === x.bank ? { ...bb, balance: (+bb.balance) - x.amount } : bb) })) }; });
+    const sb = c.bankById[s.salary.bank];
+    const ymNow = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0');
+    const gotSal = s.txns.find(x => x.cat === 'Salary' && x.date.startsWith(ymNow));
+    const salaryStatus = gotSal ? (id ? 'Gaji bulan ini sudah tercatat ' : 'This month’s salary was logged on ') + new Date(gotSal.date).toLocaleDateString(c.loc, { day: 'numeric', month: 'short' }) + '.' : (s.salary.auto ? (id ? `Akan dicatat otomatis tanggal ${s.salary.payday} dan ditambahkan ke kekayaanmu.` : `Will be added automatically on the ${s.salary.payday}th and counted in your net worth.`) : (id ? 'Mode manual: catat saat gaji masuk.' : 'Manual mode: log it when it lands.'));
+    // markets
+    const live = s.live;
+    const watchSrc = [...c.hs.filter(h => h.tv).map(h => ({ tv: h.tv, ticker: h.ticker || h.name, name: h.name, priceS: h.ccy === 'USD' ? '$' + (+h.price).toLocaleString('en-US', { maximumFractionDigits: 2 }) : 'Rp ' + Math.round(h.price).toLocaleString('id-ID'), chg: h.chg, live: h.live })),
+      { tv: 'FX_IDC:USDIDR', ticker: 'USD/IDR', name: id ? 'Kurs rupiah' : 'Rupiah rate', priceS: Math.round(c.R).toLocaleString('id-ID'), chg: null, live: !!live.USDIDR },
+      { tv: 'IDX:COMPOSITE', ticker: 'IHSG', name: 'IDX Composite', priceS: '—', chg: null, live: false },
+      { tv: 'SP:SPX', ticker: 'S&P 500', name: 'US index', priceS: '—', chg: null, live: false }];
+    const seen = {}; const watch = watchSrc.filter(w => !seen[w.tv] && (seen[w.tv] = 1)).map(w => ({ ...w, chgS: w.chg == null ? (w.live ? 'Live' : '') : c.sgn(w.chg) + (w.live ? ' · live' : ''), chgCol: w.chg != null && w.chg < 0 ? 'var(--color-accent-700)' : 'var(--color-neutral-700)', bg: w.tv === s.tvSymbol ? 'var(--color-accent-100)' : 'transparent', go: () => this.setState({ tvSymbol: w.tv }, () => this.loadChart()) }));
+    // brief
+    const brief = (s.brief && s.brief.lang === s.lang && s.brief.profile === s.profile && s.brief.items) || c.rb;
+    const briefSrc = s.briefBusy ? t.thinking : (s.brief && s.brief.lang === s.lang && s.brief.profile === s.profile) ? (id ? 'AI · dibuat ' : 'AI · generated ') + s.brief.at : (id ? 'Berbasis aturan' : 'Rule-based');
+    // modal
+    const m = s.modal, f = s.form, chip = (label, key, opts) => ({ label, opts: opts.map(o => { const v = typeof o === 'object' ? o.v : o, n = typeof o === 'object' ? o.n : o; return { name: n, ...tone(f[key] === v), set: () => this.setF(key, v) }; }) });
+    const fld = (key, label, type, ph) => ({ label, type: type || 'text', value: f[key] == null ? '' : String(f[key]), ph: ph || '', on: (e) => this.setF(key, e.target.value) });
+    let modalTitle = '', chipGroups = [], fields = [], modalNote = '', saveLabel = t.save, canDelete = false, canSave = true, modalW = '560px';
+    const bankOpts = s.banks.map(b => ({ v: b.id, n: b.name + ' · ' + b.label }));
+    if (m) {
+      if (m.type === 'holding') {
+        modalTitle = m.id ? (id ? 'Ubah aset' : 'Edit holding') : (id ? 'Tambah aset' : 'Add holding'); canDelete = !!m.id;
+        chipGroups.push({ label: t.cls, opts: K.CLASSES.map(cl => ({ name: cl, ...tone(f.cls === cl), set: () => this.setState(st2 => ({ form: { ...st2.form, cls: cl, ccy: ['Crypto', 'US stocks', 'ETF'].includes(cl) ? 'USD' : 'IDR' } })) })) });
+        if (f.cls === 'Deposito') { fields = [fld('name', id ? 'Bank' : 'Bank', 'text', 'Bank Jago'), fld('price', id ? 'Pokok (IDR)' : 'Principal (IDR)', 'number', '50000000'), fld('rate', id ? 'Bunga % p.a.' : 'Interest % p.a.', 'number', '6'), fld('maturity', id ? 'Jatuh tempo' : 'Maturity date', 'date')]; modalNote = id ? 'Penasihat akan mengingatkan menjelang jatuh tempo.' : 'The advisor will remind you before it matures.'; }
+        else {
+          chipGroups.push(chip(id ? 'Harga dalam' : 'Priced in', 'ccy', ['IDR', 'USD']));
+          const ql = f.cls === 'IDX stocks' ? (id ? 'Lembar saham (1 lot = 100)' : 'Shares (1 lot = 100)') : f.cls === 'Gold' ? (id ? 'Gram' : 'Grams') : f.cls === 'Reksa dana' ? 'Unit' : t.qty;
+          fields = [fld('ticker', 'Ticker', 'text', f.cls === 'Crypto' ? 'BTC' : f.cls === 'IDX stocks' ? 'BBCA' : f.cls === 'Gold' ? 'Antam' : 'VOO'), fld('name', t.name, 'text'), fld('qty', ql, 'number'), fld('price', (id ? 'Harga per unit' : 'Price per unit') + ' (' + f.ccy + ')', 'number')];
+          modalNote = f.cls === 'Crypto' ? (K.CG[(f.ticker || '').toUpperCase()] ? (id ? 'Harga live dari CoinGecko. Harga yang kamu isi jadi cadangan.' : 'Live price from CoinGecko. Your price is the fallback.') : (id ? 'Ticker ini belum dikenali untuk harga live; harga manual dipakai.' : 'Ticker not mapped for live prices yet; your price is used.')) : ['US stocks', 'ETF', 'IDX stocks'].includes(f.cls) ? (s.fhKey ? (id ? 'Harga live via Finnhub.' : 'Live price via Finnhub.') : (id ? 'Tambahkan key Finnhub di Pengaturan untuk harga live.' : 'Add a Finnhub key in Settings for live prices.')) : (id ? 'Harga manual. Perbarui kapan saja.' : 'Manual price. Update it any time.');
+        }
+      } else if (m.type === 'bank') {
+        modalTitle = m.id ? (id ? 'Ubah rekening' : 'Edit bank account') : (id ? 'Tambah rekening' : 'Add bank account'); canDelete = !!m.id && s.banks.length > 1; modalW = '480px';
+        chipGroups.push(chip(t.currency, 'ccy', ['IDR', 'USD']));
+        fields = [fld('name', 'Bank', 'text', 'BCA, Mandiri, BRI, Jago, SeaBank…'), fld('label', id ? 'Nama rekening' : 'Account name', 'text', id ? 'Tabungan' : 'Savings'), fld('balance', (id ? 'Saldo' : 'Balance') + ' (' + f.ccy + ')', 'number')];
+      } else if (m.type === 'goal') {
+        modalTitle = m.id ? (id ? 'Ubah target' : 'Edit goal') : (id ? 'Target baru' : 'New goal'); canDelete = !!m.id; modalW = '480px';
+        fields = [fld('name', t.name, 'text', id ? 'DP rumah' : 'House down payment'), fld('target', id ? 'Target (IDR)' : 'Target amount (IDR)', 'number', '1000000000')];
+        modalNote = (+f.target > 0) ? (id ? 'Perkiraan: ' : 'Estimate: ') + (() => { const n = c.monthsTo(+f.target); return n === 0 ? t.reached : new Date(now.getFullYear(), now.getMonth() + n, 1).toLocaleDateString(c.loc, { month: 'long', year: 'numeric' }); })() + ' · ' + S(c.invest) + t.perMonth + ' · ' + c.retY + '%' : '';
+      } else if (m.type === 'txn') {
+        modalTitle = id ? 'Catat transaksi' : 'Log transaction'; modalW = '560px';
+        chipGroups = [chip(id ? 'Arah' : 'Type', 'dir', [{ v: 'In', n: t.moneyIn }, { v: 'Out', n: t.moneyOut }]), chip(id ? 'Kategori' : 'Category', 'cat', K.CATS), chip(id ? 'Rekening' : 'Account', 'bank', bankOpts)];
+        fields = [fld('desc', id ? 'Deskripsi' : 'Description', 'text', id ? 'Bonus, makan, belanja…' : 'Bonus, dinner, shopping…'), fld('amount', id ? 'Jumlah' : 'Amount', 'number'), fld('date', id ? 'Tanggal' : 'Date', 'date')];
+        modalNote = id ? 'Saldo rekening ikut diperbarui.' : 'The account balance updates too.';
+      } else if (m.type === 'salary') {
+        modalTitle = t.salary; modalW = '520px';
+        chipGroups = [chip(t.mode, 'auto', [{ v: true, n: id ? 'Otomatis tiap gajian' : 'Auto on payday' }, { v: false, n: 'Manual' }]), chip(t.into, 'bank', bankOpts)];
+        fields = [fld('amount', id ? 'Gaji bersih / bulan (IDR)' : 'Take-home salary / month (IDR)', 'number'), fld('payday', t.payday, 'number', '25'), fld('pct', id ? '% diinvestasikan' : '% to invest', 'number', '40')];
+        modalNote = (id ? 'Diinvestasikan: ' : 'To invest: ') + S((+f.amount || 0) * (+f.pct || 0) / 100) + t.perMonth;
+      } else if (m.type === 'import') {
+        modalTitle = t.import; modalW = '720px';
+        if (m.step !== 'busy') chipGroups = [chip(id ? 'Rekening' : 'Account', 'bank', bankOpts)];
+        canSave = m.step !== 'busy';
+        saveLabel = m.step === 'review' ? (id ? 'Impor ' : 'Import ') + m.rows.filter(r => r.inc).length : (id ? 'Baca file →' : 'Read file →');
+      }
+    }
+    const ib = m && m.type === 'import' ? m : null;
+    const imRows = ib && ib.rows ? ib.rows.map((r, i) => ({ ...r, amtS: (r.amount > 0 ? '+' : '') + r.amount.toLocaleString('id-ID'), col: r.amount < 0 ? 'var(--color-text)' : 'var(--color-accent-700)', box: r.inc ? 'var(--color-text)' : 'transparent', op: r.inc ? 1 : 0.45, catBg: r.cat === 'Salary' ? 'var(--color-accent-200)' : 'var(--color-neutral-200)', toggle: () => this.setM({ rows: ib.rows.map((x, j) => j === i ? { ...x, inc: !x.inc } : x) }), cycle: () => { const k = K.CATS[(K.CATS.indexOf(r.cat) + 1) % K.CATS.length]; this.setM({ rows: ib.rows.map((x, j) => j === i ? { ...x, cat: k } : x) }); } })) : [];
+    const imInc = imRows.filter(r => r.inc), sal = imInc.filter(r => r.cat === 'Salary');
+    const imBank = ib && c.bankById[f.bank];
+    const ccyF = (v) => (imBank && imBank.ccy === 'USD' ? '$' + v.toLocaleString('en-US') : 'Rp ' + Math.round(v).toLocaleString('id-ID'));
+    return {
+      t, narrow, wide: !narrow,
+      pad: narrow ? '20px 16px' : '32px', pad2: narrow ? '28px 20px' : '56px', g21: narrow ? '1fr' : '2fr 1fr', gAuth: narrow ? '1fr' : '1.1fr 1fr', gMk: narrow ? '1fr' : '340px 1fr', gAdv: narrow ? '1fr' : '1.6fr 1fr', heroSize: narrow ? '44px' : '84px', authStmt: narrow ? '36px' : '64px', chartH: narrow ? '420px' : '620px',
+      rowCols: narrow ? '1fr auto' : '2.2fr 1fr 1.1fr 1.2fr .8fr .7fr', rowColsH: narrow ? '1fr auto' : '2fr 1fr 1fr 1fr 1.1fr .7fr .6fr 1fr', txCols: narrow ? '56px 1fr auto 20px' : '80px 2fr 1fr 1fr 1fr 20px', wideD: narrow ? 'none' : 'block', narrowD: narrow ? 'block' : 'none',
+      authOut: s.auth !== 'in', authIn: s.auth === 'in', aSignup: s.auth === 'signup', aOtp: s.auth === 'otp', aPin: pinMode, aLocked: s.auth === 'locked',
+      authErr: s.authErr, signName: s.signName, signEmail: s.signEmail, otp: s.otp,
+      onSignName: e => this.setState({ signName: e.target.value }), onSignEmail: e => this.setState({ signEmail: e.target.value, authErr: '' }), onOtp: e => this.setState({ otp: e.target.value.replace(/\D/g, '').slice(0, 6), authErr: '' }),
+      signup: () => this.signup(), google: () => this.setState({ signEmail: s.signEmail || 'you@gmail.com', signName: s.signName || 'You', auth: 'otp', otp: '', authErr: '' }), verifyOtp: () => this.verifyOtp(),
+      pinTitle: s.auth === 'locked' ? t.hi + (s.account && s.account.name ? ', ' + s.account.name : '') : s.auth === 'confirmpin' ? t.confirmPin : t.setPin,
+      pinSub: s.auth === 'locked' ? t.enterPin : t.setPinS,
+      pinDots: [0, 1, 2, 3, 4, 5].map(i => ({ bg: i < s.pinBuf.length ? 'var(--color-text)' : 'transparent' })), keys,
+      forgot: () => this.setState({ auth: 'otp', otp: '', authErr: '' }),
+      tabs: ['home', 'holdings', 'cash', 'goals', 'markets', 'advisor', 'settings'].map(k => ({ label: t[k], line: s.tab === k ? 'var(--color-accent)' : 'transparent', fw: s.tab === k ? 800 : 400, go: () => this.setState({ tab: k }) })),
+      isHome: s.tab === 'home', isHoldings: s.tab === 'holdings', isCash: s.tab === 'cash', isGoals: s.tab === 'goals', isMarkets: s.tab === 'markets', isAdvisor: s.tab === 'advisor', isSettings: s.tab === 'settings',
+      curOpts: ['IDR', 'USD'].map(k => ({ name: k, ...tone(s.cur === k), set: () => this.setState({ cur: k }) })),
+      langOpts: [['en', 'EN'], ['id', 'ID']].map(([k, n]) => ({ name: n, ...tone(s.lang === k), set: () => this.setState({ lang: k }, () => s.auth === 'in' && this.genBrief(false)) })),
+      profiles: ['Conservative', 'Balanced', 'Aggressive'].map(p => ({ name: id ? { Conservative: 'Konservatif', Balanced: 'Moderat', Aggressive: 'Agresif' }[p] : p, ...tone(p === s.profile), set: () => this.setState({ profile: p }, () => this.genBrief(false)) })),
+      profileL: id ? { Conservative: 'Konservatif', Balanced: 'Moderat', Aggressive: 'Agresif' }[s.profile] : s.profile,
+      profileDesc: (id ? { Conservative: 'Kripto maks 10%. Fokus deposito, SBN, reksa dana pasar uang. Asumsi 6%/thn.', Balanced: 'Kripto maks 20%. Campuran ETF, saham, dan pendapatan tetap. Asumsi 9%/thn.', Aggressive: 'Kripto maks 35%. Dominan saham dan ETF. Asumsi 12%/thn.' } : { Conservative: 'Crypto capped at 10%. Leans on deposito, government bonds and money-market funds. Assumes 6%/yr.', Balanced: 'Crypto capped at 20%. A mix of ETFs, stocks and fixed income. Assumes 9%/yr.', Aggressive: 'Crypto capped at 35%. Mostly stocks and ETFs. Assumes 12%/yr.' })[s.profile],
+      lock: () => this.setState({ auth: 'locked', pinBuf: '', authErr: '' }), changePin: () => this.setState({ auth: 'setpin', pinBuf: '', authErr: '' }),
+      logout: () => this.setState({ auth: 'signup', account: null, pin: null, pinBuf: '', signEmail: '', signName: '', chat: [] }),
+      resetDemo: () => this.setState({ ...this.seed(), account: s.account, pin: s.pin, lang: s.lang, cur: s.cur }),
+      todayS: now.toLocaleDateString(c.loc, { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' }),
+      totalL: c.L(c.total), totalS: S(c.total), dayChg: (c.day >= 0 ? '+' : '−') + S(Math.abs(c.day)) + ' (' + c.sgn(c.total ? c.day / c.total * 100 : 0) + ')',
+      investS: S(c.invest), retS: c.retY + '%' + (id ? '/thn' : '/yr'), retPct: c.retY + '%',
+      goals: c.goals.map(g => ({ ...g, activate: () => this.setState({ activeGoal: g.id }), edit: () => this.openGoal(g.id) })), ag: c.ag, newGoal: () => this.openGoal(null),
+      classes: c.classes, histLine, histArea: histLine + ' L760,180 L0,180 Z',
+      brief, briefSrc, regenBrief: () => this.genBrief(true), regenLabel: s.briefBusy ? t.thinking : (id ? 'Buat ulang' : 'Regenerate'), goAdvisor: () => this.setState({ tab: 'advisor' }),
+      filters, fRows, fTotal: S(fT), fShare: c.pct(c.total ? fT / c.total : 0),
+      newHolding: () => this.openHolding(null), newBank: () => this.openBank(null), refresh: () => this.fetchPrices(), refreshLabel: s.fetching ? (id ? 'Memperbarui…' : 'Updating…') : (id ? 'Perbarui harga' : 'Refresh prices'),
+      liveS: s.liveAt ? (id ? 'Harga diperbarui ' : 'Prices updated ') + s.liveAt.toLocaleTimeString(c.loc, { hour: '2-digit', minute: '2-digit' }) + ' · USD/IDR ' + Math.round(c.R).toLocaleString('id-ID') : (id ? 'Memuat harga live…' : 'Loading live prices…'), rateS: Math.round(c.R).toLocaleString('id-ID') + (s.live.USDIDR ? ' · live' : ''),
+      cashS: S(c.cash), bankCount: s.banks.length + (id ? ' rekening' : ' accounts'),
+      bankCells: c.bk.map(b => ({ name: b.name, label: b.label, ccy: b.ccy, balS: b.ccy === 'USD' ? '$' + (+b.balance).toLocaleString('en-US') : 'Rp ' + Math.round(b.balance).toLocaleString('id-ID'), conv: b.ccy === 'USD' ? '≈ Rp ' + Math.round(b.idr).toLocaleString('id-ID') : (s.cur === 'USD' ? '≈ ' + S(b.idr) : ''), open: () => this.openBank(b.id) })),
+      monthS: new Date(yy, mm - 1, 1).toLocaleDateString(c.loc, { month: 'long', year: 'numeric' }), prevMonth: () => shiftM(-1), nextMonth: () => shiftM(1),
+      mInS: S(c.mIn), mOutS: S(c.mOut), mNetS: (c.mIn - c.mOut >= 0 ? '+' : '') + S(c.mIn - c.mOut), catBars, txRows, txEmpty: txRows.length === 0,
+      salaryS: S(+s.salary.amount), paydayS: (id ? 'Tgl ' : 'Day ') + s.salary.payday, salaryPct: s.salary.pct + '%', salaryMode: s.salary.auto ? (id ? 'Otomatis' : 'Automatic') : 'Manual', salaryBank: sb ? sb.name : '—', salaryStatus,
+      logSalary: () => this.addSalary(), editSalary: () => this.openSalary(), newTxn: () => this.openTxn(), openImport: () => this.openImport(),
+      totalSx: S(c.total), projLine, projArea: projLine + ' L' + (maxN * st).toFixed(1) + ',280 L0,280 Z', goalLines, yearTicks, projNote: (id ? 'Asumsi ' : 'Assumes ') + c.retY + (id ? '%/thn, ' : '%/yr, ') + S(c.invest) + t.perMonth,
+      watch, tvSym: (watch.find(w => w.tv === s.tvSymbol) || { ticker: s.tvSymbol }).ticker, tvChartRef: this.tvChartRef, tvNewsRef: this.tvNewsRef,
+      chat: s.chat.map(x => ({ who: x.role === 'user' ? (id ? 'Kamu' : 'You') : (id ? 'Penasihat Nilai' : 'Nilai advisor'), whoCol: x.role === 'user' ? 'var(--color-neutral-700)' : 'var(--color-accent-700)', bg: x.role === 'user' ? 'var(--color-surface)' : 'transparent', text: x.content })),
+      chatEmpty: s.chat.length === 0, chatBusy: s.chatBusy, chatInput: s.chatInput,
+      onChat: e => this.setState({ chatInput: e.target.value }), chatKey: e => { if (e.key === 'Enter') this.ask(); }, askNow: () => this.ask(),
+      quick: (id ? ['Gajiku bulan ini sebaiknya ke mana?', 'Apakah aku on track ke Rp 1 M?', 'Perpanjang deposito atau pindah?', 'Investasi terbaik jangka panjang untukku?'] : ['Where should this month’s salary go?', 'Am I on track for Rp 1 M?', 'Roll over my deposito or move it?', 'Best long-term investment for me?']).map(q => ({ text: q, go: () => this.ask(q) })),
+      accName: s.account ? s.account.name : '', accEmail: s.account ? s.account.email : '',
+      fhDraft: s.fhDraft, onFh: e => this.setState({ fhDraft: e.target.value.trim() }), saveFh: () => this.setState({ fhKey: s.fhDraft }, () => this.fetchPrices()), fhStatus: s.fhKey ? (Object.keys(s.live).some(k => k.startsWith('fh:')) ? (id ? 'Terhubung · harga saham live' : 'Connected · stock prices live') : (id ? 'Key tersimpan' : 'Key saved')) : (id ? 'Belum ada key' : 'No key yet'),
+      modalOpen: !!m, modalTitle, chipGroups, fields, modalNote, formErr: s.formErr, saveLabel, canDelete, canSave, modalW,
+      closeModal: () => this.setState({ modal: null }), stop: e => e.stopPropagation(), saveModal: () => this.saveModal(), deleteModal: () => this.deleteModal(),
+      imPick: !!ib && ib.step === 'pick', imBusy: !!ib && ib.step === 'busy', imReview: !!ib && ib.step === 'review',
+      imFileLabel: ib && ib.fileName ? ib.fileName : (id ? 'Pilih file mutasi…' : 'Choose a statement file…'), imBusyLabel: (id ? 'Membaca ' : 'Reading ') + (ib ? ib.fileName : '') + '…',
+      onFile: e => { const fl = e.target.files && e.target.files[0]; if (fl) { this.importFile = fl; this.setM({ fileName: fl.name }); this.setState({ formErr: '' }); } },
+      imPw: ib ? ib.pw : '', onPw: e => this.setM({ pw: e.target.value }),
+      imRows, imCount: imInc.length, imIn: ccyF(imInc.filter(r => r.amount > 0).reduce((a, r) => a + r.amount, 0)), imOut: ccyF(-imInc.filter(r => r.amount < 0).reduce((a, r) => a + r.amount, 0)),
+      imSalaryFound: sal.length > 0, imSalaryMsg: (id ? 'Gaji terdeteksi: ' : 'Salary detected: ') + sal.map(r => ccyF(r.amount) + ' · ' + r.date).join(', '),
+      imHasClosing: !!ib && ib.closing != null, imClosingBox: ib && ib.useClosing ? 'var(--color-text)' : 'transparent', imClosingMsg: (id ? 'Set saldo ' : 'Set ') + (imBank ? imBank.name : '') + (id ? ' ke saldo akhir ' : ' balance to the closing balance ') + (ib && ib.closing != null ? ccyF(ib.closing) : ''), toggleClosing: () => this.setM({ useClosing: !ib.useClosing })
+    };
+  }
+}
+</script>
+</body>
+</html>
