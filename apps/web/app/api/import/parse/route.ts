@@ -1,6 +1,6 @@
 import { getDocumentProxy } from "unpdf";
 import * as XLSX from "xlsx";
-import { parseMandiri, type Line } from "@nilai/core";
+import { parseMandiri, parseMandiriLivin, type Line } from "@nilai/core";
 import { userFromRequest } from "@/lib/prices";
 
 export const maxDuration = 120;
@@ -15,7 +15,7 @@ async function pdfLines(bytes: Uint8Array, password?: string): Promise<Line[][]>
     for (const it of (await (await pdf.getPage(p)).getTextContent()).items) {
       if (!("str" in it) || !it.str.trim()) continue;
       const y = Math.round(it.transform[5]);
-      (rows.get(y) ?? rows.set(y, []).get(y)!).push({ x: Math.round(it.transform[4]), s: it.str.trim() });
+      (rows.get(y) ?? rows.set(y, []).get(y)!).push({ x: Math.round(it.transform[4]), y, s: it.str.trim() });
     }
     pages.push([...rows.entries()].sort((a, b) => b[0] - a[0]).map(([, cells]) => cells.sort((a, b) => a.x - b.x)));
   }
@@ -39,10 +39,10 @@ export async function POST(req: Request) {
     if (ext === "pdf") {
       const pages = await pdfLines(bytes, password);
       text = pages.map((p) => p.map((l) => l.map((c) => c.s).join(" ")).join("\n")).join("\n");
-      if (/bankmandiri|Rekening Koran/i.test(text)) {
-        const accounts = parseMandiri(pages).filter((a) => a.transactions.length);
-        if (accounts.length) return Response.json({ accounts, parser: "mandiri" });
-      }
+      // Mandiri Livin' e-Statement (downloaded in the app) or the emailed Rekening Koran / consolidated statement
+      const accounts = /Nominal \(IDR\)/.test(text) ? parseMandiriLivin(pages)
+        : /bankmandiri|Rekening Koran/i.test(text) ? parseMandiri(pages).filter((a) => a.transactions.length) : [];
+      if (accounts.length) return Response.json({ accounts, parser: "mandiri" });
     } else if (ext === "xlsx" || ext === "xls") {
       const wb = XLSX.read(bytes);
       text = wb.SheetNames.map((n) => XLSX.utils.sheet_to_csv(wb.Sheets[n])).join("\n");

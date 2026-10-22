@@ -67,7 +67,7 @@ Modals: Holding (class chips, IDR/USD chips, fields vary by class; Deposito = ba
   `/api/lookup` resolves any coin ticker via CoinGecko search and pre-fills the live price; holding form has Quantity | Amount.
 - [x] Salary auto-post: pg_cron `post_due_salaries()` daily 00:05 WIB, payday clamped to month end, one per month
 - [x] Statement import, rule-based (no AI, no cost): `parseMandiri` in packages/core reads Mandiri Rekening Koran / consolidated PDFs
-  (password-protected too), verifies every row against the running balance, keyword categories. Other banks/XLSX/CSV fall back to
+  and Livin' e-Statements (`parseMandiriLivin`), password-protected too, verifies every row against the running balance, keyword categories. Other banks/XLSX/CSV fall back to
   Claude Haiku 5.5 only when ANTHROPIC_API_KEY is set. `commit_import()`: re-importing a month replaces that month's imported rows
   for that account; other months, manual and salary rows are kept.
 - [x] Month analysis, rule-based (`reviewMonth`): top spending + biggest payee, rising category vs previous 2 months or overspending,

@@ -1,7 +1,7 @@
 import type { Category } from './constants';
 
-/** One visual line of a PDF page: text cells with their x position, left to right. */
-export type Cell = { x: number; s: string };
+/** One visual line of a PDF page: text cells with their x (and baseline y) position, left to right. */
+export type Cell = { x: number; y?: number; s: string };
 export type Line = Cell[];
 
 export type ParsedTxn = { date: string; description: string; amount: number; category: Category };
@@ -87,11 +87,65 @@ export function parseMandiri(pages: Line[][]): ParsedAccount[] {
   }));
 }
 
+const MONTHS: Record<string, number> = { Jan: 1, Feb: 2, Mar: 3, Apr: 4, May: 5, Mei: 5, Jun: 6, Jul: 7, Aug: 8, Agu: 8, Agt: 8, Sep: 9, Oct: 10, Okt: 10, Nov: 11, Dec: 12, Des: 12 };
+const ID_AMOUNT = /^[+-]\d{1,3}(?:\.\d{3})*,\d{2}$/; // +1.100.000,00
+const ID_BALANCE = /^-?\d{1,3}(?:\.\d{3})*,\d{2}$/;
+const idNum = (s: string) => Number(s.replace(/[+.]/g, '').replace(',', '.'));
+const LONG_DATE = /^(\d{2}) ([A-Za-z]{3}) (\d{4})$/;
+
+/**
+ * Mandiri Livin' e-Statement ("No | Tanggal | Keterangan | Nominal | Saldo"). Each transaction is a block of lines with the
+ * amount line in the middle and remarks above and below it; blocks are separated by a vertical gap.
+ * Every row is checked against the running balance; a misread sets balanced = false.
+ */
+export function parseMandiriLivin(pages: Line[][]): ParsedAccount[] {
+  const all = pages.flat();
+  const text = all.map((l) => l.map((c) => c.s).join(' ')).join('\n');
+  const accountNo = text.match(/\b(\d{13})\b/)?.[1] ?? '';
+  const product = all.find((l) => l.length === 1 && l[0].x < 40 && /^(Tabungan|Giro)\b/.test(l[0].s))?.[0].s ?? 'Tabungan';
+  const currency = text.match(/Currency\s*:\s*([A-Z]{3})/)?.[1] ?? 'IDR';
+  const after = (label: RegExp) => { const l = all.find((x) => x.some((c) => label.test(c.s))); const v = l?.map((c) => c.s.replace(/^[+-] /, '')).filter((s) => ID_BALANCE.test(s)).pop(); return v != null ? idNum(v) : null; };
+  let bal = after(/^Saldo Awal/);
+  const closing = after(/^Saldo Akhir/);
+  const acc: ParsedAccount = { label: `Mandiri ${product} ${accountNo}`.trim(), currency, closing_balance: closing, transactions: [], balanced: true };
+
+  for (const page of pages) {
+    // split the page into blocks wherever the gap between consecutive lines is large
+    const blocks: Line[][] = [];
+    let prevY: number | null = null;
+    for (const line of page) {
+      const y = line[0]?.y ?? 0;
+      if (prevY == null || prevY - y > 14) blocks.push([]);
+      blocks[blocks.length - 1].push(line);
+      prevY = y;
+    }
+    for (const block of blocks) {
+      const cells = block.flat();
+      const amt = cells.find((c) => ID_AMOUNT.test(c.s));
+      const balCell = cells.find((c) => c !== amt && c.x > 450 && ID_BALANCE.test(c.s));
+      const no = cells.find((c) => c.x < 40 && /^\d+$/.test(c.s));
+      const date = cells.map((c) => c.s.match(LONG_DATE)).find(Boolean);
+      if (!amt || !balCell || !no || !date) continue;
+      const amount = idNum(amt.s), balance = idNum(balCell.s);
+      if (bal != null && Math.abs(bal + amount - balance) > 0.005) acc.balanced = false;
+      bal = balance;
+      const parts = block.flatMap((l) => l.filter((c) => c.x >= 100 && c.x < amt.x - 5).map((c) => c.s));
+      const description = clean(parts) || (amount < 0 ? 'Payment' : 'Credit');
+      acc.transactions.push({
+        date: `${date[3]}-${String(MONTHS[date[2]] ?? 1).padStart(2, '0')}-${date[1]}`,
+        description, amount, category: categorize(description, amount),
+      });
+    }
+  }
+  if (acc.closing_balance == null) acc.closing_balance = bal;
+  return acc.transactions.length ? [acc] : [];
+}
+
 // Keyword rules, first match wins. The user can tap to change any category before importing.
 const RULES: [Category, RegExp][] = [
   ['Salary', /\b(GAJI|PAYROLL|SALARY|THR)\b/i],
   ['Investment', /BIBIT|AJAIB|BAREKSA|STOCKBIT|IPOT|INDOPREMIER|MIRAE|PINTU|INDODAX|TOKOCRYPTO|REKSA|\bSBN\b|\bORI\b|\bSBR\b|DEPOSITO|SAHAM/i],
-  ['Bills', /PLN|TELKOM|INDIHOME|BPJS|PDAM|PULSA|TELKOMSEL|XL ?AXIATA|INDOSAT|SMARTFREN|BIZNET|FIRST ?MEDIA|ASURANSI|PREMI|CICILAN|ANGSURAN|KARTU KREDIT|CREDIT CARD|BIAYA ADM|CARD CHARGE|PAJAK|NETFLIX|SPOTIFY|YOUTUBE|\bKOS\b/i],
+  ['Bills', /PAYLATER|KREDIVO|AKULAKU|BIAYA|PLN|TELKOM|INDIHOME|BPJS|PDAM|PULSA|TELKOMSEL|XL ?AXIATA|INDOSAT|SMARTFREN|BIZNET|FIRST ?MEDIA|ASURANSI|PREMI|CICILAN|ANGSURAN|KARTU KREDIT|CREDIT CARD|BIAYA ADM|CARD CHARGE|PAJAK|NETFLIX|SPOTIFY|YOUTUBE|\bKOS\b/i],
   ['Food', /MAKAN|NASGOR|\bNASI\b|MCDONALD|KFC|BURGER|PIZZA|STARBUCKS|KOPI|COFFEE|CAFE|RESTO|BAKSO|SATE|\bMIE\b|AYAM|WARUNG|GOFOOD|GRABFOOD|SHOPEEFOOD|BAKERY|HOKBEN|SOLARIA|CHATIME|MIXUE/i],
   ['Transport', /GOJEK|GO-JEK|GRAB(?!FOOD)|MAXIM|\bKRL\b|\bMRT\b|\bLRT\b|TRANSJAKARTA|\bKAI\b|PERTAMINA|SPBU|SHELL|\bTOL\b|PARKIR|TRAVELOKA|TIKET|GARUDA|CITILINK|LION ?AIR|BLUEBIRD/i],
   ['Shopping', /TOKOPEDIA|SHOPEE|LAZADA|BLIBLI|TIKTOK|INDOMARET|ALFAMART|ALFAMIDI|SUPERINDO|HYPERMART|TRANSMART|LOTTE|IKEA|UNIQLO|ZALORA|ACE HARDWARE|MATAHARI/i],
