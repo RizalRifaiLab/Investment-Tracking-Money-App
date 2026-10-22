@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { CATEGORIES, type AccountValue, type Category } from "@nilai/core";
+import { CATEGORIES, mergeStatements, type AccountValue, type Category, type ParsedAccount } from "@nilai/core";
 import { supabase } from "@/lib/supabase";
 import type { Strings } from "@/lib/i18n";
 import { Chips, Field, Modal } from "./ui";
@@ -24,7 +24,8 @@ function guessTarget(label: string, currency: string, accounts: AccountValue[]) 
 export function ImportModal({ t, accounts, onClose, onDone }: {
   t: Strings; accounts: AccountValue[]; onClose: () => void; onDone: (lastMonth: string | null) => void;
 }) {
-  const [file, setFile] = useState<File | null>(null);
+  const [files, setFiles] = useState<File[]>([]);
+  const [reading, setReading] = useState(0); // index of the file being read
   const [pw, setPw] = useState("");
   const [step, setStep] = useState<"pick" | "busy" | "review">("pick");
   const [stmt, setStmt] = useState<StmtAccount[]>([]);
@@ -32,26 +33,30 @@ export function ImportModal({ t, accounts, onClose, onDone }: {
   const [saving, setSaving] = useState(false);
 
   async function read() {
-    if (!file) return setErr(t.errNoFile);
+    if (!files.length) return setErr(t.errNoFile);
     setErr("");
     setStep("busy");
-    const fd = new FormData();
-    fd.append("file", file);
-    if (pw) fd.append("password", pw);
     const { data } = await supabase.auth.getSession();
-    const r = await fetch("/api/import/parse", { method: "POST", body: fd, headers: { Authorization: `Bearer ${data.session?.access_token ?? ""}` } });
-    const j = await r.json().catch(() => ({ code: "read" }));
-    if (!r.ok) {
-      setStep("pick");
-      return setErr(j.code === "ai" ? t.errAi + (j.error ?? "") : t[ERR[j.code] ?? "errRead"]);
+    const results: ParsedAccount[][] = [];
+    // one file at a time keeps each request under the server's size and time limits
+    for (const [i, file] of files.entries()) {
+      setReading(i);
+      const fd = new FormData();
+      fd.append("file", file);
+      if (pw) fd.append("password", pw);
+      const r = await fetch("/api/import/parse", { method: "POST", body: fd, headers: { Authorization: `Bearer ${data.session?.access_token ?? ""}` } });
+      const j = await r.json().catch(() => ({ code: "read" }));
+      if (!r.ok) {
+        setStep("pick");
+        return setErr(file.name + ": " + (j.code === "ai" ? t.errAi + (j.error ?? "") : t[ERR[j.code] ?? "errRead"]));
+      }
+      results.push((j.accounts as ParsedAccount[]).map((a) => ({ ...a, currency: a.currency.toUpperCase(), balanced: a.balanced ?? true })));
     }
-    const accs: StmtAccount[] = (j.accounts as { label: string; currency: string; closing_balance: number | null; balanced?: boolean; transactions: Omit<Row, "inc">[] }[])
-      .filter((a) => a.transactions.length)
-      .map((a) => ({
-        label: a.label, currency: a.currency.toUpperCase(), closing_balance: a.closing_balance, balanced: a.balanced ?? true,
-        rows: a.transactions.map((x) => ({ ...x, inc: true })),
-        target: guessTarget(a.label, a.currency.toUpperCase(), accounts), useClosing: a.closing_balance != null,
-      }));
+    const accs: StmtAccount[] = mergeStatements(results).filter((a) => a.transactions.length).map((a) => ({
+      label: a.label, currency: a.currency, closing_balance: a.closing_balance, balanced: a.balanced,
+      rows: a.transactions.map((x) => ({ ...x, inc: true })),
+      target: guessTarget(a.label, a.currency, accounts), useClosing: a.closing_balance != null,
+    }));
     if (!accs.length) { setStep("pick"); return setErr(t.noTx); }
     setStmt(accs);
     setStep("review");
@@ -90,15 +95,17 @@ export function ImportModal({ t, accounts, onClose, onDone }: {
         <>
           <label className="flex flex-col gap-1.5">
             <span className="text-xs text-neutral-800">{t.imFormats}</span>
-            <span className="min-h-11 px-3 py-2.5 border-2 border-dashed border-text text-[15px] cursor-pointer hover:bg-neutral-200">{file ? file.name : t.chooseFile}</span>
-            <input type="file" accept=".pdf,.xlsx,.xls,.csv" className="sr-only" onChange={(e) => { setFile(e.target.files?.[0] ?? null); setErr(""); }} />
+            <span className="min-h-11 px-3 py-2.5 border-2 border-dashed border-text text-[15px] cursor-pointer hover:bg-neutral-200">
+              {files.length ? files.map((f) => f.name).join(", ") : t.chooseFile}
+            </span>
+            <input type="file" multiple accept=".pdf,.xlsx,.xls,.csv" className="sr-only" onChange={(e) => { setFiles([...(e.target.files ?? [])]); setErr(""); }} />
           </label>
           <Field label={t.pdfPw} type="password" autoComplete="off" value={pw} onChange={(e) => setPw(e.target.value)} />
         </>
       )}
       {step === "busy" && (
         <div className="flex flex-col gap-1.5 py-3">
-          <b className="text-lg text-accent-700">{t.reading}{file?.name}…</b>
+          <b className="text-lg text-accent-700">{t.reading}{files[reading]?.name}{files.length > 1 ? ` (${reading + 1}/${files.length})` : ""}…</b>
           <span className="text-[13px] text-neutral-800">{t.imBusyNote}</span>
         </div>
       )}

@@ -156,3 +156,24 @@ export function categorize(description: string, amount: number): Category {
   for (const [cat, re] of RULES) if (re.test(description)) return cat === 'Salary' && amount < 0 ? 'Transfer' : cat;
   return amount > 0 ? 'Income' : 'Other';
 }
+
+/**
+ * Combine statements from several files: the same account (by account-number digits + currency) is merged, a month that
+ * appears in two files is taken from the later file, and the closing balance comes from the most recent period.
+ */
+export function mergeStatements(files: ParsedAccount[][]): ParsedAccount[] {
+  const byKey = new Map<string, { acc: ParsedAccount; months: Map<string, ParsedTxn[]>; lastDate: string }>();
+  for (const file of files) for (const a of file) {
+    const key = a.currency + ':' + (a.label.replace(/\D/g, '') || a.label);
+    const e = byKey.get(key) ?? byKey.set(key, { acc: { ...a, transactions: [] }, months: new Map(), lastDate: '' }).get(key)!;
+    const months = new Map<string, ParsedTxn[]>();
+    for (const x of a.transactions) (months.get(x.date.slice(0, 7)) ?? months.set(x.date.slice(0, 7), []).get(x.date.slice(0, 7))!).push(x);
+    for (const [m, rows] of months) e.months.set(m, rows); // later file replaces that month
+    const last = a.transactions.map((x) => x.date).sort().pop() ?? '';
+    if (last >= e.lastDate) { e.lastDate = last; e.acc.closing_balance = a.closing_balance; e.acc.label = a.label; }
+    e.acc.balanced &&= a.balanced;
+  }
+  return [...byKey.values()].map(({ acc, months }) => ({
+    ...acc, transactions: [...months.keys()].sort().flatMap((m) => months.get(m)!.slice().sort((x, y) => x.date.localeCompare(y.date))),
+  }));
+}
