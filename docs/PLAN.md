@@ -53,9 +53,10 @@ Modals: Holding (class chips, IDR/USD chips, fields vary by class; Deposito = ba
 ## 3. Phase 1 checklist (ARCHITECTURE.md §5.1)
 - [x] Monorepo: `apps/web` (Next.js 16, Tailwind v4 tokens, Archivo), `packages/core` (formatters, projection, constants + tests)
 - [x] `supabase/migrations/…_init.sql`: full data model, RLS, PIN RPCs, valuation views (not yet applied — needs project)
-- [ ] Supabase project linked, migration pushed, auth email OTP enabled (code, not magic link)
-- [ ] Auth screens: signup → OTP → set/confirm PIN; PIN unlock; forgot PIN; auto-lock
-- [ ] Shell: tabs, IDR/USD, EN/ID, Lock
+- [x] Supabase project (via Vercel integration, ap-southeast-1), migration pushed
+- [ ] Email template sends the code (`{{ .Token }}`) — manual step in Supabase dashboard
+- [x] Auth screens: signup → OTP → set/confirm PIN; PIN unlock; forgot PIN; 5-try lockout; auto-lock after 5 min hidden
+- [x] Shell: tabs, IDR/USD, EN/ID (saved to profile), Lock; Settings has account + log out
 - [ ] Dashboard, Holdings (+ bank accounts), Goals, Cash flow (accounts + salary), Settings
 - [ ] Modals: holding, bank, goal, salary, transaction
 - [ ] Edge function + pg_cron: CoinGecko (5 min) and USD/IDR (hourly) into `prices` / `fx_rates`

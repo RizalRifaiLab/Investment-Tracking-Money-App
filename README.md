@@ -28,7 +28,7 @@ Requires Node.js 20+ and the [Vercel CLI](https://vercel.com/docs/cli).
 ```bash
 npm install
 vercel link              # once, pick the "nilai" project
-vercel env pull .env.local
+vercel env pull apps/web/.env.local
 npm run dev              # http://localhost:3000
 ```
 

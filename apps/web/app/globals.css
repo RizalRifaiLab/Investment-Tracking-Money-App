@@ -21,6 +21,7 @@
   --color-neutral-700: #605d5d;
   --color-neutral-800: #444141;
   --color-neutral-900: #2d2b2b;
+  --breakpoint-wide: 1100px;
   --font-sans: var(--font-archivo), system-ui, sans-serif;
   --shadow-sm: 0 1px 2px color-mix(in srgb, #2d2b2b 14%, transparent);
   --shadow-md: 0 3px 10px color-mix(in srgb, #2d2b2b 16%, transparent);

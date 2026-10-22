@@ -12,8 +12,8 @@ Personal net-worth and investing tracker for Indonesian users. IDR-first, biling
 
 ## Commands (repo root)
 - `npm install` · `npm run dev` · `npm run build` · `npm run lint` · `npm test` (core tests)
-- `vercel env pull .env.local` — Supabase + Vercel env vars (never commit)
-- Apply migrations (bash): `set -a; . ./.env.local; set +a; npx supabase db push --db-url "$POSTGRES_URL_NON_POOLING"`
+- `vercel env pull apps/web/.env.local` — Supabase + Vercel env vars (never commit)
+- Apply migrations (bash): `set -a; . apps/web/.env.local; set +a; npx supabase db push --db-url "$POSTGRES_URL_NON_POOLING"`
 - Deploy: push to `main` (GitHub → Vercel), or `vercel deploy` (preview) / `vercel deploy --prod`
 
 ## Money rules
