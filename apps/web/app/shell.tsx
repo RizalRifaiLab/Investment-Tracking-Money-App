@@ -5,6 +5,7 @@ import type { RiskProfile } from "@nilai/core";
 import { api } from "@/lib/api";
 import { supabase } from "@/lib/supabase";
 import type { Lang, Strings } from "@/lib/i18n";
+import { CashFlow } from "./cashflow";
 import { useData, type Goal } from "./data";
 import { BankModal, GoalModal, HoldingModal } from "./modals";
 import { Dashboard, Holdings, viewModel, type Open } from "./portfolio";
@@ -91,9 +92,10 @@ export default function Shell({ t, lang, setLang, email, profile, setProfile, lo
 
       {error && <div className="px-4 py-3 wide:px-8 text-sm font-semibold text-accent-700" role="alert">{error}</div>}
       {vm && tab === "home" && <Dashboard vm={vm} t={t} cur={profile.currency} open={setModal} activate={activate} />}
+      {vm && data && tab === "cash" && <CashFlow data={data} t={t} cur={profile.currency} loc={vm.loc} open={setModal} reload={reload} />}
       {vm && tab === "holdings" && <Holdings vm={vm} t={t} open={setModal} refresh={refresh} refreshing={refreshing} />}
       {modalEl}
-      {tab !== "home" && tab !== "holdings" && <main className="px-4 py-5 wide:p-8">
+      {!["home", "holdings", "cash"].includes(tab) && <main className="px-4 py-5 wide:p-8">
         {tab === "settings" ? (
           <section className="flex flex-col gap-3 max-w-[540px]">
             <div className="text-xs font-extrabold uppercase tracking-[0.08em]">{t.account}</div>
