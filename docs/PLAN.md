@@ -59,7 +59,7 @@ Modals: Holding (class chips, IDR/USD chips, fields vary by class; Deposito = ba
 - [x] Shell: tabs, IDR/USD, EN/ID (saved to profile), Lock; Settings has account + log out
 - [x] Dashboard (net worth, goal ETA, goals row, allocation, holdings table + filters), Holdings (+ bank accounts)
 - [x] Cash flow: accounts, month in/out/net, spending by category, transactions (balance kept by DB trigger), salary card
-- [ ] Goals tab (projection chart), Settings (risk profile, change PIN)
+- [x] Goals tab (projection chart, goal cells), Settings (risk profile, language/currency, change PIN, salary), Markets (watchlist + TradingView chart)
 - [x] Modals: holding, bank, goal
 - [x] Modals: salary, transaction
 - [x] Live prices: `/api/prices/refresh` (Vercel) called by pg_cron every 5 min (bearer = Vault `cron_secret` = Vercel `CRON_SECRET`).

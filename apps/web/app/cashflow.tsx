@@ -190,7 +190,7 @@ function TxnModal({ t, data, onClose, onSaved }: { t: Strings; data: Data; onClo
   );
 }
 
-function SalaryModal({ t, data, sal, S, onClose, onSaved }: { t: Strings; data: Data; sal: Salary | null; S: (v: number) => string; onClose: () => void; onSaved: () => void }) {
+export function SalaryModal({ t, data, sal, S, onClose, onSaved }: { t: Strings; data: Data; sal: Salary | null; S: (v: number) => string; onClose: () => void; onSaved: () => void }) {
   // Salary is in IDR, so only IDR accounts can receive it.
   const idrAccounts = data.accounts.filter((a) => a.currency === "IDR");
   const [f, setF] = useState({

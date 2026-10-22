@@ -8,7 +8,10 @@ import type { Lang, Strings } from "@/lib/i18n";
 import { CashFlow } from "./cashflow";
 import { useData, type Goal } from "./data";
 import { BankModal, GoalModal, HoldingModal } from "./modals";
+import { Goals } from "./goals";
+import { Markets } from "./markets";
 import { Dashboard, Holdings, viewModel, type Open } from "./portfolio";
+import { profileLabel, Settings } from "./settings";
 import { Segmented } from "./ui";
 
 export type Profile = { user_id: string; name: string; currency: "IDR" | "USD"; language: Lang; risk_profile: RiskProfile };
@@ -95,24 +98,15 @@ export default function Shell({ t, lang, setLang, email, profile, setProfile, lo
       {vm && data && tab === "cash" && <CashFlow data={data} t={t} cur={profile.currency} loc={vm.loc} open={setModal} reload={reload} />}
       {vm && tab === "holdings" && <Holdings vm={vm} t={t} open={setModal} refresh={refresh} refreshing={refreshing} />}
       {modalEl}
-      {!["home", "holdings", "cash"].includes(tab) && <main className="px-4 py-5 wide:p-8">
-        {tab === "settings" ? (
-          <section className="flex flex-col gap-3 max-w-[540px]">
-            <div className="text-xs font-extrabold uppercase tracking-[0.08em]">{t.account}</div>
-            <div className="text-[32px] font-extrabold tracking-[-0.02em]">{profile.name}</div>
-            <div className="text-[15px] text-neutral-800">{email}</div>
-            <div className="flex gap-3">
-              <button onClick={lock} className="border-2 border-text hover:bg-neutral-200 font-extrabold text-sm px-4 py-3 cursor-pointer">{t.lock}</button>
-              <button onClick={logout} className="border-2 border-text hover:bg-neutral-200 font-extrabold text-sm px-4 py-3 cursor-pointer">{t.logout}</button>
-            </div>
-          </section>
-        ) : (
-          <section>
-            <div className="text-xs font-extrabold uppercase tracking-[0.08em]">{t[tab]}</div>
-            <div className="text-[32px] font-extrabold tracking-[-0.02em] mt-2">{t.comingSoon}</div>
-          </section>
-        )}
-      </main>}
+      {vm && tab === "goals" && <Goals vm={vm} t={t} profileLabel={profileLabel(t, profile.risk_profile)} open={setModal} activate={activate} />}
+      {data && tab === "markets" && <Markets data={data} t={t} lang={lang} refresh={refresh} refreshing={refreshing} />}
+      {data && tab === "settings" && <Settings t={t} lang={lang} setLang={setLang} email={email} profile={profile} setProfile={setProfile} data={data} reload={reload} lock={lock} logout={logout} />}
+      {tab === "advisor" && (
+        <main className="px-4 py-5 wide:p-8">
+          <div className="text-xs font-extrabold uppercase tracking-[0.08em]">{t.advisor}</div>
+          <div className="text-[32px] font-extrabold tracking-[-0.02em] mt-2">{t.comingSoon}</div>
+        </main>
+      )}
     </div>
   );
 }

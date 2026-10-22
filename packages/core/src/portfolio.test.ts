@@ -45,6 +45,7 @@ describe('instrumentMeta', () => {
   it('maps providers', () => {
     expect(instrumentMeta('Crypto', 'btc')).toEqual({ provider: 'coingecko', provider_symbol: 'bitcoin', tv_symbol: 'BINANCE:BTCUSDT' });
     expect(instrumentMeta('Crypto', 'PEPE').provider).toBeNull();
+    expect(instrumentMeta('Crypto', 'usdt')).toEqual({ provider: 'coingecko', provider_symbol: 'tether', tv_symbol: null });
     expect(instrumentMeta('IDX stocks', 'bbca')).toEqual({ provider: 'yahoo', provider_symbol: 'BBCA.JK', tv_symbol: 'IDX:BBCA' });
     expect(instrumentMeta('ETF', 'voo').provider_symbol).toBe('VOO');
     expect(instrumentMeta('Gold', '').tv_symbol).toBe('OANDA:XAUUSD');

@@ -71,7 +71,9 @@ export function instrumentMeta(cls: AssetClass, ticker: string): Meta {
   const none: Meta = { provider: null, provider_symbol: null, tv_symbol: null };
   if (!T) return cls === 'Gold' ? { ...none, tv_symbol: 'OANDA:XAUUSD' } : none;
   switch (cls) {
-    case 'Crypto': return COINGECKO_IDS[T] ? { provider: 'coingecko', provider_symbol: COINGECKO_IDS[T], tv_symbol: `BINANCE:${T}USDT` } : { ...none, tv_symbol: `BINANCE:${T}USDT` };
+    // stablecoins have no USDT pair to chart
+    case 'Crypto': if (T === 'USDT' || T === 'USDC') return { ...none, provider: 'coingecko', provider_symbol: COINGECKO_IDS[T] };
+      return COINGECKO_IDS[T] ? { provider: 'coingecko', provider_symbol: COINGECKO_IDS[T], tv_symbol: `BINANCE:${T}USDT` } : { ...none, tv_symbol: `BINANCE:${T}USDT` };
     case 'US stocks': case 'ETF': return { provider: 'yahoo', provider_symbol: T, tv_symbol: T };
     case 'IDX stocks': return { provider: 'yahoo', provider_symbol: `${T}.JK`, tv_symbol: `IDX:${T}` };
     case 'Gold': return { ...none, tv_symbol: 'OANDA:XAUUSD' };

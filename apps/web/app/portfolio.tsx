@@ -24,7 +24,8 @@ export function viewModel(data: Data, cur: Currency, lang: Lang, profile: RiskPr
   const goals = data.goals.map((g) => {
     const target = Number(g.target_idr), n = monthsTo(p.total, target, invest, retPct), d = etaDate(n);
     return {
-      ...g, target, active: g.id === active?.id, targetS: S(target), pct: formatPct(Math.min(1, p.total / target)),
+      ...g, target, n, active: g.id === active?.id, targetS: S(target), pct: formatPct(Math.min(1, p.total / target)),
+      gapS: p.total >= target ? t.reached : S(target - p.total) + t.toGo,
       eta: n === 0 ? t.reached : d ? d.toLocaleDateString(loc, { month: "short", year: "numeric" }) : t.yrs60,
     };
   });
