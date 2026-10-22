@@ -1,13 +1,15 @@
 {
   "name": "nilai",
   "private": true,
-  "workspaces": ["apps/*", "packages/*"],
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
   "scripts": {
     "dev": "npm run dev -w web",
     "build": "npm run build -w web",
     "lint": "npm run lint -w web",
-    "test": "npm test -w @nilai/core",
-    "db:push": "supabase db push"
+    "test": "npm test -w @nilai/core"
   },
   "devDependencies": {
     "supabase": "2.121.0"

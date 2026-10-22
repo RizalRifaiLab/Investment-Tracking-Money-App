@@ -3,16 +3,18 @@
 Personal net-worth and investing tracker for Indonesian users. IDR-first, bilingual EN/ID.
 - Architecture, data model, phases: `ARCHITECTURE.md`. Progress and decisions: `docs/PLAN.md`.
 - UX/copy source of truth: `prototype/Nilai App.dc.html` — formulas, EN/ID strings and AI prompts live in its
-  `<script data-dc-script>` block. Design tokens: `README.md` (already in `apps/web/app/globals.css`).
+  `<script data-dc-script>` block. Design spec + tokens: `docs/DESIGN.md` (already in `apps/web/app/globals.css`).
 
 ## Layout
 - `apps/web` — Next.js 16 (App Router, TS, Tailwind v4). Read `apps/web/AGENTS.md`: check `node_modules/next/dist/docs/` before using Next APIs.
 - `packages/core` — pure TS shared with the future Expo app: formatters, projection maths, constants. Unit-tested with Vitest.
-- `supabase/` — SQL migrations (RLS on every table), edge functions, `config.toml`. Hosted project (no Docker on this machine).
+- `supabase/` — SQL migrations (RLS on every table), edge functions, `config.toml`. Hosted project `exjglglsmrrtmwgbaeiu` (ap-southeast-1), provisioned via the Vercel Supabase integration; no Docker on this machine.
 
 ## Commands (repo root)
 - `npm install` · `npm run dev` · `npm run build` · `npm run lint` · `npm test` (core tests)
-- `npx supabase link --project-ref <ref>` once, then `npm run db:push` to apply migrations
+- `vercel env pull .env.local` — Supabase + Vercel env vars (never commit)
+- Apply migrations (bash): `set -a; . ./.env.local; set +a; npx supabase db push --db-url "$POSTGRES_URL_NON_POOLING"`
+- Deploy: push to `main` (GitHub → Vercel), or `vercel deploy` (preview) / `vercel deploy --prod`
 
 ## Money rules
 - Postgres stores money, quantity, price and rate as `NUMERIC`, in the original currency. Never store converted values (snapshots excepted).

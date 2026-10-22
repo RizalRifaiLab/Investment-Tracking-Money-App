@@ -1,6 +1,6 @@
 @import "tailwindcss";
 
-/* Modernist design system tokens (README.md). Each --color-* also becomes a Tailwind utility, e.g. bg-accent, text-neutral-700. */
+/* Modernist design system tokens (docs/DESIGN.md). Each --color-* also becomes a Tailwind utility, e.g. bg-accent, text-neutral-700. */
 @theme {
   --color-bg: #f3f2f2;
   --color-surface: #eae9e9;

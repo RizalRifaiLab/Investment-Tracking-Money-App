@@ -4,7 +4,7 @@ Prices are estimates as of Oct 2026 in USD; check each vendor before committing.
 ## 1. Stack
 | Layer | Choice | Why |
 |---|---|---|
-| Web app | Next.js (App Router, TypeScript) + Tailwind (tokens from README) | One codebase for desktop + mobile web; installable as a PWA in phase 1 |
+| Web app | Next.js (App Router, TypeScript) + Tailwind (tokens from docs/DESIGN.md) | One codebase for desktop + mobile web; installable as a PWA in phase 1 |
 | Mobile app (phase 2) | Expo / React Native, sharing a `packages/core` (types, formatters, projection maths) | Native biometrics + secure storage for PIN |
 | Backend | Supabase: Postgres, Auth (email OTP + Google), Row Level Security, Storage, Edge Functions, pg_cron | Auth + DB + storage in one, low cost, RLS isolates every user's data |
 | Workers | Small Python service on Fly.io / Railway (pdfplumber + pikepdf, openpyxl) | Unlocks password PDFs and extracts text server-side; Edge Functions can't run these |
