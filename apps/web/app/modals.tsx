@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { ASSET_CLASSES, COINGECKO_IDS, etaDate, formatShort, instrumentMeta, monthsTo, type AccountValue, type AssetClass, type Currency, type HoldingValue } from "@nilai/core";
+import { ASSET_CLASSES, etaDate, formatShort, instrumentMeta, monthsTo, type AccountValue, type AssetClass, type Currency, type HoldingValue } from "@nilai/core";
+import { api } from "@/lib/api";
 import { supabase } from "@/lib/supabase";
 import type { Strings } from "@/lib/i18n";
 import type { Goal } from "./data";
@@ -10,6 +11,9 @@ import { Chips, Field, Modal } from "./ui";
 type Common = { t: Strings; onClose: () => void; onSaved: () => void };
 const USD_CLASSES: AssetClass[] = ["Crypto", "US stocks", "ETF"];
 const positive = (s: string) => Number(s) > 0;
+const LIVE_CLASSES: AssetClass[] = ["Crypto", "US stocks", "ETF", "IDX stocks"];
+
+type Lookup = ReturnType<typeof instrumentMeta> & { key: string; name: string | null; quote: { price: number; currency: Currency } | null };
 
 /** Run a Supabase write; on success reload + close, else show the error. */
 function useSave({ onClose, onSaved }: Common) {
@@ -34,35 +38,64 @@ export function HoldingModal({ h, ...c }: Common & { h?: HoldingValue }) {
     qty: h ? String(h.quantity) : "", price: h ? String(h.manual_price) : "", ccy: (h?.price_currency ?? "USD") as Currency,
     rate: h?.deposit_rate != null ? String(h.deposit_rate) : "", maturity: h?.maturity_date ?? "",
   });
-  const set = (p: Partial<typeof f>) => { setF({ ...f, ...p }); s.setError(""); };
+  const [byAmount, setByAmount] = useState(false);
+  const [amount, setAmount] = useState("");
+  // Editing keeps the stored provider ids until the class or ticker changes.
+  const [look, setLook] = useState<Lookup | null>(h ? { key: h.class + ":" + h.ticker, provider: h.provider, provider_symbol: h.provider_symbol, tv_symbol: h.tv_symbol, name: null, quote: null } : null);
+  const [looking, setLooking] = useState(false);
+  const set = (p: Partial<typeof f>) => { setF((x) => ({ ...x, ...p })); s.setError(""); };
   const dep = f.cls === "Deposito";
+  const T = f.ticker.trim().toUpperCase();
+  const lookKey = f.cls + ":" + T;
+  const lk = look?.key === lookKey ? look : null;
+  // Amount mode: quantity = amount ÷ price (what you own is units; the value then follows the price).
+  const qty = byAmount ? (positive(amount) && positive(f.price) ? String(+(Number(amount) / Number(f.price)).toFixed(10)) : "") : f.qty;
+
+  async function lookup() {
+    if (!LIVE_CLASSES.includes(f.cls) || !T || lk) return;
+    setLooking(true);
+    const r = await api<Omit<Lookup, "key">>(`/api/lookup?cls=${encodeURIComponent(f.cls)}&ticker=${encodeURIComponent(T)}`).catch(() => null);
+    setLooking(false);
+    if (!r) return;
+    setLook({ ...r, key: lookKey });
+    set({
+      ...(r.quote ? { price: String(r.quote.price), ccy: r.quote.currency === "USD" ? "USD" : "IDR" } : {}),
+      ...(r.name && !f.name.trim() ? { name: r.name } : {}),
+    });
+  }
 
   function save() {
-    const T = f.ticker.trim().toUpperCase();
     if (!(f.name.trim() || T)) return s.setError(t.errNameTicker);
-    if (!dep && !positive(f.qty)) return s.setError(t.errQty);
+    if (!dep && !positive(qty)) return s.setError(t.errQty);
     if (!positive(f.price)) return s.setError(t.errPrice);
+    const { provider, provider_symbol, tv_symbol } = lk ?? instrumentMeta(f.cls, dep ? "" : T);
     const row = {
       class: f.cls, name: (f.name.trim() || T), ticker: dep ? "" : T,
-      quantity: dep ? "1" : f.qty, manual_price: f.price, price_currency: dep ? "IDR" : f.ccy,
+      quantity: dep ? "1" : qty, manual_price: f.price, price_currency: dep ? "IDR" : f.ccy,
       deposit_rate: dep ? f.rate || "0" : null, maturity_date: dep && f.maturity ? f.maturity : null,
-      ...instrumentMeta(f.cls, dep ? "" : T),
+      provider, provider_symbol, tv_symbol,
     };
     s.run(h ? supabase.from("holdings").update(row).eq("id", h.id) : supabase.from("holdings").insert(row));
   }
 
+  const fmtPrice = (p: number, c: Currency) => (c === "USD" ? "$" + p.toLocaleString("en-US", { maximumFractionDigits: 6 }) : "Rp " + p.toLocaleString("id-ID", { maximumFractionDigits: 2 }));
   const note = dep ? t.noteDep
-    : f.cls === "Crypto" ? (COINGECKO_IDS[f.ticker.trim().toUpperCase()] ? t.noteCgLive : t.noteCgUnknown)
-    : ["US stocks", "ETF", "IDX stocks"].includes(f.cls) ? t.noteFh : t.noteManual;
+    : looking ? t.updating
+    : lk?.quote ? t.liveQuote + fmtPrice(lk.quote.price, lk.quote.currency) + " · " + (f.cls === "Crypto" ? t.noteCgLive : t.noteFh)
+    : lk && !lk.provider ? t.notFound
+    : LIVE_CLASSES.includes(f.cls) ? (f.cls === "Crypto" ? t.noteCgLive : t.noteFh) : t.noteManual;
+  const qtyHint = byAmount && qty ? `${t.approx}${qty} ${f.cls === "Crypto" ? T : ""}`.trim() : "";
   const qtyLabel = f.cls === "IDX stocks" ? t.sharesLot : f.cls === "Gold" ? t.grams : f.cls === "Reksa dana" ? t.unit : t.qty;
   const ph = f.cls === "Crypto" ? "BTC" : f.cls === "IDX stocks" ? "BBCA" : f.cls === "Gold" ? "Antam" : "VOO";
 
   return (
-    <Modal t={t} title={h ? t.editHolding : t.addHoldingT} onClose={c.onClose} onSave={save} busy={s.busy} error={s.error} note={note}
+    <Modal t={t} title={h ? t.editHolding : t.addHoldingT} onClose={c.onClose} onSave={save} busy={s.busy || looking} error={s.error} note={[qtyHint, note].filter(Boolean).join(" · ")}
       onDelete={h ? () => s.run(supabase.from("holdings").delete().eq("id", h.id)) : undefined}>
       <Chips label={t.cls} value={f.cls} onChange={(cls) => set({ cls, ccy: USD_CLASSES.includes(cls) ? "USD" : "IDR" })}
         options={ASSET_CLASSES.map((v) => ({ v, name: v }))} />
       {!dep && <Chips label={t.pricedIn} value={f.ccy} onChange={(ccy) => set({ ccy })} options={[{ v: "IDR", name: "IDR" }, { v: "USD", name: "USD" }]} />}
+      {!dep && <Chips label={t.enterBy} value={byAmount ? "amount" : "qty"} onChange={(v) => setByAmount(v === "amount")}
+        options={[{ v: "qty", name: t.byQty }, { v: "amount", name: t.byAmount }]} />}
       <div className="grid grid-cols-[repeat(auto-fit,minmax(200px,1fr))] gap-3">
         {dep ? (
           <>
@@ -73,9 +106,11 @@ export function HoldingModal({ h, ...c }: Common & { h?: HoldingValue }) {
           </>
         ) : (
           <>
-            <Field label="Ticker" value={f.ticker} onChange={(e) => set({ ticker: e.target.value })} placeholder={ph} autoCapitalize="characters" />
+            <Field label="Ticker" value={f.ticker} onChange={(e) => set({ ticker: e.target.value })} onBlur={lookup} placeholder={ph} autoCapitalize="characters" />
             <Field label={t.name} value={f.name} onChange={(e) => set({ name: e.target.value })} />
-            <Field label={qtyLabel} type="number" inputMode="decimal" min="0" step="any" value={f.qty} onChange={(e) => set({ qty: e.target.value })} />
+            {byAmount
+              ? <Field label={`${t.amountL} (${f.ccy})`} type="number" inputMode="decimal" min="0" step="any" value={amount} onChange={(e) => setAmount(e.target.value)} />
+              : <Field label={qtyLabel} type="number" inputMode="decimal" min="0" step="any" value={f.qty} onChange={(e) => set({ qty: e.target.value })} />}
             <Field label={`${t.pricePerUnit} (${f.ccy})`} type="number" inputMode="decimal" min="0" step="any" value={f.price} onChange={(e) => set({ price: e.target.value })} />
           </>
         )}

@@ -41,7 +41,7 @@ Modals: Holding (class chips, IDR/USD chips, fields vary by class; Deposito = ba
 - Stack, data model and phases follow `ARCHITECTURE.md` (Next.js + Supabase, `packages/core`); the original prompt fills gaps.
 - Goals + salary settings are in phase 1 (dashboard hero needs the active goal ETA).
 - Mobile-first: narrow layout default, prototype wide layout at ≥1100px.
-- Dropped from the prototype: per-user Finnhub key in Settings (server secret instead), "Reset to demo data".
+- Dropped from the prototype: per-user Finnhub key in Settings, "Reset to demo data". Stocks use Yahoo instead of Finnhub (free IDX coverage).
 - 12-month chart hidden until `networth_snapshots` has data; "today" change shows "—" for manual prices.
 - Change PIN requires the current PIN. Forgot PIN = email OTP, then `set_pin` (allowed within 10 min of OTP sign-in).
 - Auto-salary runs as a daily cron job (Asia/Jakarta), payday clamped to the month's last day.
@@ -61,6 +61,8 @@ Modals: Holding (class chips, IDR/USD chips, fields vary by class; Deposito = ba
 - [ ] Goals tab (projection chart), Cash flow (accounts + salary), Settings (risk profile, change PIN)
 - [x] Modals: holding, bank, goal
 - [ ] Modals: salary, transaction
-- [ ] Edge function + pg_cron: CoinGecko (5 min) and USD/IDR (hourly) into `prices` / `fx_rates`
+- [x] Live prices: `/api/prices/refresh` (Vercel) called by pg_cron every 5 min (bearer = Vault `cron_secret` = Vercel `CRON_SECRET`).
+  Crypto: CoinGecko, Hyperliquid fallback. US stocks/ETF + IDX: Yahoo (unofficial; move to EODHD before launch). USD/IDR: open.er-api.
+  `/api/lookup` resolves any coin ticker via CoinGecko search and pre-fills the live price; holding form has Quantity | Amount.
 - [ ] Salary auto-post cron
 - [ ] Google sign-in, PWA manifest

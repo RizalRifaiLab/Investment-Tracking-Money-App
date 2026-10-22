@@ -29,7 +29,9 @@ export function viewModel(data: Data, cur: Currency, lang: Lang, profile: RiskPr
     };
   });
   const anyLive = p.rows.some((r) => r.live);
-  return { ...p, loc, R, S, invest, retPct, goals, ag: goals.find((g) => g.active), anyLive };
+  const lastPrice = data.holdings.reduce((m, h) => (h.is_live && h.price_updated_at && h.price_updated_at > m ? h.price_updated_at : m), "");
+  const pricesAt = lastPrice ? new Date(lastPrice).toLocaleTimeString(loc, { hour: "2-digit", minute: "2-digit" }) : "";
+  return { ...p, loc, R, S, invest, retPct, goals, ag: goals.find((g) => g.active), anyLive, pricesAt };
 }
 type VM = ReturnType<typeof viewModel>;
 
@@ -172,7 +174,7 @@ export function Dashboard({ vm, t, cur, open, activate }: { vm: VM; t: Strings; 
   );
 }
 
-export function Holdings({ vm, t, open }: { vm: VM; t: Strings; open: Open }) {
+export function Holdings({ vm, t, open, refresh, refreshing }: { vm: VM; t: Strings; open: Open; refresh: () => void; refreshing: boolean }) {
   const f = useFilter(vm, t);
   return (
     <div className="px-4 py-5 wide:p-8 flex flex-col gap-4">
@@ -180,9 +182,10 @@ export function Holdings({ vm, t, open }: { vm: VM; t: Strings; open: Open }) {
         <div className="flex flex-col gap-1.5 flex-1 min-w-60">
           <div className={kicker}>{t.holdings}</div>
           <div className="text-[44px] font-extrabold tracking-[-0.03em] leading-[1.05]">{f.sumS}</div>
-          <div className="text-[13px] text-neutral-800">{f.share} {t.ofNW} · {vm.anyLive ? "" : t.pricesManual + " · "}USD/IDR {Math.round(vm.R).toLocaleString("id-ID")}</div>
+          <div className="text-[13px] text-neutral-800">{f.share} {t.ofNW} · {vm.pricesAt ? t.pricesAt + vm.pricesAt : t.pricesManual} · USD/IDR {Math.round(vm.R).toLocaleString("id-ID")}</div>
         </div>
         <div className="flex gap-2 flex-wrap">
+          <button className={btnOutline} onClick={refresh} disabled={refreshing}>{refreshing ? t.updating : t.refresh}</button>
           <button className={btnOutline} onClick={() => open({ type: "bank" })}>{t.addBank}</button>
           <button className={btnPrimary} onClick={() => open({ type: "holding" })}>{t.addHolding}</button>
         </div>

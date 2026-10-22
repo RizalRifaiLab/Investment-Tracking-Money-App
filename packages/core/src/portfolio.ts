@@ -4,9 +4,9 @@ import { COINGECKO_IDS, type AssetClass } from './constants';
 export type HoldingValue = {
   id: string; class: AssetClass; name: string; ticker: string;
   quantity: number; manual_price: number; price_currency: 'IDR' | 'USD';
-  provider: 'coingecko' | 'finnhub' | null; provider_symbol: string | null; tv_symbol: string | null;
+  provider: 'coingecko' | 'yahoo' | null; provider_symbol: string | null; tv_symbol: string | null;
   deposit_rate: number | null; maturity_date: string | null;
-  price: number; change_24h: number; is_live: boolean; value_idr: number;
+  price: number; change_24h: number; is_live: boolean; value_idr: number; price_updated_at?: string | null;
 };
 /** Row of the `account_values` view. */
 export type AccountValue = { id: string; bank: string; label: string; currency: 'IDR' | 'USD'; balance: number; value_idr: number };
@@ -45,7 +45,7 @@ export function buildPortfolio(holdings: HoldingValue[], accounts: AccountValue[
         qtyS: qtyLabel(h, loc),
         priceS: dep ? `${Number(h.deposit_rate ?? 0)}% p.a.` : price(Number(h.price), h.price_currency),
         idr: Number(h.value_idr), chg: Number(h.change_24h),
-        src: h.is_live ? (h.provider === 'coingecko' ? 'Live · CoinGecko' : 'Live · Finnhub') : 'Manual', live: h.is_live,
+        src: h.is_live ? (h.provider === 'coingecko' ? 'Live · CoinGecko' : 'Live · Yahoo') : 'Manual', live: h.is_live,
       };
     }),
     ...accounts.map((a): Row => ({
@@ -65,15 +65,15 @@ export function buildPortfolio(holdings: HoldingValue[], accounts: AccountValue[
 }
 
 /** Live-price provider and TradingView symbol for a ticker, as in the prototype. */
-type Meta = { provider: 'coingecko' | 'finnhub' | null; provider_symbol: string | null; tv_symbol: string | null };
+type Meta = { provider: 'coingecko' | 'yahoo' | null; provider_symbol: string | null; tv_symbol: string | null };
 export function instrumentMeta(cls: AssetClass, ticker: string): Meta {
   const T = ticker.trim().toUpperCase();
   const none: Meta = { provider: null, provider_symbol: null, tv_symbol: null };
   if (!T) return cls === 'Gold' ? { ...none, tv_symbol: 'OANDA:XAUUSD' } : none;
   switch (cls) {
     case 'Crypto': return COINGECKO_IDS[T] ? { provider: 'coingecko', provider_symbol: COINGECKO_IDS[T], tv_symbol: `BINANCE:${T}USDT` } : { ...none, tv_symbol: `BINANCE:${T}USDT` };
-    case 'US stocks': case 'ETF': return { provider: 'finnhub', provider_symbol: T, tv_symbol: T };
-    case 'IDX stocks': return { provider: 'finnhub', provider_symbol: `${T}.JK`, tv_symbol: `IDX:${T}` };
+    case 'US stocks': case 'ETF': return { provider: 'yahoo', provider_symbol: T, tv_symbol: T };
+    case 'IDX stocks': return { provider: 'yahoo', provider_symbol: `${T}.JK`, tv_symbol: `IDX:${T}` };
     case 'Gold': return { ...none, tv_symbol: 'OANDA:XAUUSD' };
     default: return none;
   }

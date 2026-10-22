@@ -26,7 +26,7 @@ Personal net-worth and investing tracker for Indonesian users. IDR-first, biling
 - Every user table has `user_id default auth.uid()` + RLS policy `user_id = auth.uid()`. New table → add RLS in the same migration.
 - Schema changes only via new files in `supabase/migrations/`; never edit an applied migration.
 - PIN: only via `set_pin` / `verify_pin` / `change_pin` / `has_pin` RPCs; `pins` table has no policies.
-- Claude API and market-data APIs only from edge functions / server code. Keys in Supabase secrets or `.env.local`, never `NEXT_PUBLIC_`.
+- Claude API and market-data APIs only from server code (`apps/web/app/api/*`, `lib/prices.ts`). Keys in Supabase secrets or `.env.local`, never `NEXT_PUBLIC_`.
 - UI copy: add both `en` and `id` strings, reuse prototype wording. Errors inline in accent-700, 14px/600. No border radius; 2px ink rules.
 - Mobile-first: narrow layout is the default; `≥1100px` gets the prototype's wide layout.
 - Small commits, one working step each; run `npm test` and `npm run build` before committing.

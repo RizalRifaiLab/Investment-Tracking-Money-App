@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import type { RiskProfile } from "@nilai/core";
+import { api } from "@/lib/api";
 import { supabase } from "@/lib/supabase";
 import type { Lang, Strings } from "@/lib/i18n";
 import { useData, type Goal } from "./data";
@@ -24,6 +25,15 @@ export default function Shell({ t, lang, setLang, email, profile, setProfile, lo
   const [modal, setModal] = useState<Parameters<Open>[0] | null>(null);
   const { data, error, reload } = useData();
   const vm = data && viewModel(data, profile.currency, lang, profile.risk_profile, t);
+  const [refreshing, setRefreshing] = useState(false);
+  const refresh = useCallback(() => {
+    setRefreshing(true);
+    // a failed refresh just leaves the last stored prices in place
+    api("/api/prices/refresh", { method: "POST" }).catch(() => null).then(() => reload()).finally(() => setRefreshing(false));
+  }, [reload]);
+  useEffect(() => {
+    api("/api/prices/refresh", { method: "POST" }).catch(() => null).then(() => reload());
+  }, [reload]);
 
   async function activate(g: Goal) {
     if (g.is_active) return;
@@ -81,7 +91,7 @@ export default function Shell({ t, lang, setLang, email, profile, setProfile, lo
 
       {error && <div className="px-4 py-3 wide:px-8 text-sm font-semibold text-accent-700" role="alert">{error}</div>}
       {vm && tab === "home" && <Dashboard vm={vm} t={t} cur={profile.currency} open={setModal} activate={activate} />}
-      {vm && tab === "holdings" && <Holdings vm={vm} t={t} open={setModal} />}
+      {vm && tab === "holdings" && <Holdings vm={vm} t={t} open={setModal} refresh={refresh} refreshing={refreshing} />}
       {modalEl}
       {tab !== "home" && tab !== "holdings" && <main className="px-4 py-5 wide:p-8">
         {tab === "settings" ? (
