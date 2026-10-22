@@ -2,8 +2,10 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { CATEGORIES, formatShort, type Category, type Currency } from "@nilai/core";
+import { api } from "@/lib/api";
 import { supabase } from "@/lib/supabase";
-import type { Strings } from "@/lib/i18n";
+import type { Lang, Strings } from "@/lib/i18n";
+import { ImportModal } from "./importer";
 import type { Data, Salary } from "./data";
 import type { Open } from "./portfolio";
 import { btnOutline, btnPrimary, Chips, Field, kicker, Modal } from "./ui";
@@ -14,12 +16,17 @@ const ym = (d: Date) => d.getFullYear() + "-" + String(d.getMonth() + 1).padStar
 const todayIso = () => { const d = new Date(); return ym(d) + "-" + String(d.getDate()).padStart(2, "0"); };
 const cellShadow = "shadow-[2px_0_0_var(--color-text),0_2px_0_var(--color-text),2px_2px_0_var(--color-text)]";
 
-export function CashFlow({ data, t, cur, loc, open, reload }: { data: Data; t: Strings; cur: Currency; loc: string; open: Open; reload: () => void }) {
+type Insight = { k: string; title: string; body: string };
+
+export function CashFlow({ data, t, lang, cur, loc, open, reload }: { data: Data; t: Strings; lang: Lang; cur: Currency; loc: string; open: Open; reload: () => void }) {
   const R = data.usdIdr, S = (v: number) => formatShort(v, cur, R);
   const [month, setMonth] = useState(() => ym(new Date()));
   const [txns, setTxns] = useState<Txn[]>([]);
   const [salaryTx, setSalaryTx] = useState<string | null>(null); // date of this month's Salary txn
-  const [modal, setModal] = useState<"txn" | "salary" | null>(null);
+  const [modal, setModal] = useState<"txn" | "salary" | "import" | null>(null);
+  const [months, setMonths] = useState<string[]>([]); // months that have any transaction, newest first
+  const [insight, setInsight] = useState<Insight[] | null>(null);
+  const [analysing, setAnalysing] = useState(false);
   const [err, setErr] = useState("");
 
   const load = useCallback(() => {
@@ -29,12 +36,24 @@ export function CashFlow({ data, t, cur, loc, open, reload }: { data: Data; t: S
     Promise.all([
       supabase.from("transactions").select("id,account_id,date,description,amount,category,source").gte("date", month + "-01").lt("date", end).order("date", { ascending: false }).order("created_at", { ascending: false }),
       supabase.from("transactions").select("date").eq("category", "Salary").gte("date", nowStart).order("date").limit(1).maybeSingle(),
-    ]).then(([tx, sal]) => {
+      supabase.from("transactions").select("date"),
+      supabase.from("cashflow_insights").select("items").eq("month", month + "-01").eq("language", lang).maybeSingle(),
+    ]).then(([tx, sal, all, ins]) => {
       if (tx.error) return setErr(tx.error.message);
       setTxns(tx.data);
       setSalaryTx(sal.data?.date ?? null);
+      setMonths([...new Set((all.data ?? []).map((x) => x.date.slice(0, 7)))].sort().reverse());
+      setInsight(ins.data?.items ?? null);
     });
-  }, [month]);
+  }, [month, lang]);
+
+  async function analyse() {
+    setAnalysing(true);
+    setErr("");
+    const r = await api<{ items: Insight[] }>("/api/insights", { method: "POST", body: JSON.stringify({ month, lang }) }).catch((e: Error) => { setErr(e.message); return null; });
+    setAnalysing(false);
+    if (r) setInsight(r.items);
+  }
   useEffect(() => { load(); }, [load]);
   const changed = () => { load(); reload(); };
 
@@ -78,7 +97,10 @@ export function CashFlow({ data, t, cur, loc, open, reload }: { data: Data; t: S
           <div className={kicker}>{t.totalCash} · {data.accounts.length}{t.accountsN}</div>
           <div className="text-[44px] font-extrabold tracking-[-0.03em] leading-none">{S(cash)}</div>
         </div>
-        <button className={btnPrimary} onClick={() => setModal("txn")} disabled={!data.accounts.length}>{t.logTxn}</button>
+        <div className="flex gap-2 flex-wrap">
+          <button className={btnOutline} onClick={() => setModal("import")} disabled={!data.accounts.length}>{t.import}</button>
+          <button className={btnPrimary} onClick={() => setModal("txn")} disabled={!data.accounts.length}>{t.logTxn}</button>
+        </div>
       </div>
 
       <div className="grid grid-cols-[repeat(auto-fit,minmax(220px,1fr))] gap-0.5 overflow-hidden border-b-2 border-text">
@@ -107,6 +129,16 @@ export function CashFlow({ data, t, cur, loc, open, reload }: { data: Data; t: S
             <div><div className="text-xs text-neutral-800">{t.moneyOut}</div><div className="text-[22px] wide:text-[26px] font-extrabold tracking-[-0.02em] text-accent-700">{S(mOut)}</div></div>
             <div><div className="text-xs text-neutral-800">{t.net}</div><div className="text-[22px] wide:text-[26px] font-extrabold tracking-[-0.02em]">{(mIn - mOut >= 0 ? "+" : "") + S(mIn - mOut)}</div></div>
           </div>
+          {months.length > 0 && (
+            <div className="flex gap-1.5 overflow-x-auto" aria-label={t.monthsData}>
+              {months.map((m) => (
+                <button key={m} onClick={() => setMonth(m)} aria-pressed={m === month}
+                  className={`shrink-0 text-xs font-extrabold px-2.5 py-1.5 border-2 border-text cursor-pointer ${m === month ? "bg-text text-bg" : ""}`}>
+                  {new Date(m + "-01T00:00:00").toLocaleDateString(loc, { month: "short", year: "2-digit" })}
+                </button>
+              ))}
+            </div>
+          )}
           <div className={kicker}>{t.spendingBy}</div>
           <div className="flex flex-col gap-2">
             {Object.entries(outs).sort((a, b) => b[1] - a[1]).map(([k, v]) => (
@@ -134,6 +166,28 @@ export function CashFlow({ data, t, cur, loc, open, reload }: { data: Data; t: S
         </div>
       </div>
 
+      {txns.length > 0 && (
+        <div className={`${pad} border-b-2 border-text flex flex-col gap-4`}>
+          <div className="flex justify-between items-baseline gap-3">
+            <div className={`${kicker} text-accent-700`}>{t.analysis}</div>
+            <button onClick={analyse} disabled={analysing} className="font-extrabold text-[13px] text-accent-700 cursor-pointer">
+              {analysing ? t.analysing : insight ? t.reanalyse : t.analyse}
+            </button>
+          </div>
+          {insight ? (
+            <div className="grid wide:grid-cols-3 gap-4">
+              {insight.map((b, i) => (
+                <div key={i} className="flex flex-col gap-1 pb-4 border-b border-divider wide:border-b-0">
+                  <div className="text-[11px] font-extrabold tracking-[0.08em] uppercase text-neutral-700">{b.k}</div>
+                  <div className="text-[17px] font-extrabold leading-tight text-pretty">{b.title}</div>
+                  <div className="text-sm text-neutral-800 text-pretty">{b.body}</div>
+                </div>
+              ))}
+            </div>
+          ) : <div className="text-sm text-neutral-800">{t.noInsight}</div>}
+        </div>
+      )}
+
       <div className={pad}>
         <div className={`${kicker} mb-3`}>{t.txns}</div>
         {txns.map((x) => {
@@ -153,6 +207,7 @@ export function CashFlow({ data, t, cur, loc, open, reload }: { data: Data; t: S
       </div>
 
       {modal === "txn" && <TxnModal t={t} data={data} onClose={() => setModal(null)} onSaved={(d) => { if (d.slice(0, 7) !== month) setMonth(d.slice(0, 7)); changed(); }} />}
+      {modal === "import" && <ImportModal t={t} accounts={data.accounts} onClose={() => setModal(null)} onDone={(m) => { if (m && m !== month) setMonth(m); changed(); }} />}
       {modal === "salary" && <SalaryModal t={t} data={data} sal={sal} S={S} onClose={() => setModal(null)} onSaved={changed} />}
     </div>
   );

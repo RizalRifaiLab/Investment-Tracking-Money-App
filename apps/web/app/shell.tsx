@@ -95,7 +95,7 @@ export default function Shell({ t, lang, setLang, email, profile, setProfile, lo
 
       {error && <div className="px-4 py-3 wide:px-8 text-sm font-semibold text-accent-700" role="alert">{error}</div>}
       {vm && tab === "home" && <Dashboard vm={vm} t={t} cur={profile.currency} open={setModal} activate={activate} />}
-      {vm && data && tab === "cash" && <CashFlow data={data} t={t} cur={profile.currency} loc={vm.loc} open={setModal} reload={reload} />}
+      {vm && data && tab === "cash" && <CashFlow data={data} t={t} lang={lang} cur={profile.currency} loc={vm.loc} open={setModal} reload={reload} />}
       {vm && tab === "holdings" && <Holdings vm={vm} t={t} open={setModal} refresh={refresh} refreshing={refreshing} />}
       {modalEl}
       {vm && tab === "goals" && <Goals vm={vm} t={t} profileLabel={profileLabel(t, profile.risk_profile)} open={setModal} activate={activate} />}

@@ -66,4 +66,7 @@ Modals: Holding (class chips, IDR/USD chips, fields vary by class; Deposito = ba
   Crypto: CoinGecko, Hyperliquid fallback. US stocks/ETF + IDX: Yahoo (unofficial; move to EODHD before launch). USD/IDR: open.er-api.
   `/api/lookup` resolves any coin ticker via CoinGecko search and pre-fills the live price; holding form has Quantity | Amount.
 - [x] Salary auto-post: pg_cron `post_due_salaries()` daily 00:05 WIB, payday clamped to month end, one per month
+- [x] Statement import (PDF incl. password, XLSX, CSV) → Claude Haiku 5.5 parses per account (consolidated statements too) → review → `commit_import()`:
+  re-importing a month replaces that month's imported rows for that account; other months, manual and salary rows are kept.
+- [x] Month analysis: `/api/insights` → 3 AI items per month (this month vs the 2 before), cached in `cashflow_insights`, cleared on re-import.
 - [ ] Google sign-in, PWA manifest

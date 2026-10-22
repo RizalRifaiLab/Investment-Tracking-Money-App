@@ -48,9 +48,9 @@ export function Field({ label, ...p }: { label: string } & React.InputHTMLAttrib
 }
 
 /** Modal shell from the prototype: ink backdrop, 2px border, header ✕, footer Delete / Cancel / Save. */
-export function Modal({ t, title, width = 560, onClose, onSave, onDelete, busy, error, note, children }: {
+export function Modal({ t, title, width = 560, onClose, onSave, onDelete, busy, error, note, saveLabel, children }: {
   t: Strings; title: string; width?: number; onClose: () => void; onSave: () => void; onDelete?: () => void;
-  busy?: boolean; error?: string; note?: string; children: ReactNode;
+  busy?: boolean; error?: string; note?: string; saveLabel?: string; children: ReactNode;
 }) {
   useEffect(() => {
     const kd = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
@@ -75,7 +75,7 @@ export function Modal({ t, title, width = 560, onClose, onSave, onDelete, busy, 
           {onDelete && <button type="button" onClick={onDelete} disabled={busy} className="font-extrabold text-sm px-1 py-2.5 text-accent-700 cursor-pointer">{t.del}</button>}
           <span className="flex-1" />
           <button type="button" onClick={onClose} className={btnOutline}>{t.cancel}</button>
-          <button disabled={busy} className={btnPrimary}>{t.save}</button>
+          <button disabled={busy} className={btnPrimary}>{saveLabel ?? t.save}</button>
         </div>
       </form>
     </div>
