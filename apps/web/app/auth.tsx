@@ -7,6 +7,11 @@ import { Segmented } from "./ui";
 
 export type AuthStep = "signup" | "otp" | "setpin" | "confirmpin" | "locked";
 
+// Set while a PIN reset is pending (forgot / locked out). In localStorage because the email link opens a new tab.
+const RESET_KEY = "nilai-reset-pin";
+export const resetPending = () => { try { return localStorage.getItem(RESET_KEY) === "1"; } catch { return false; } };
+const setResetPending = (on: boolean) => { try { if (on) localStorage.setItem(RESET_KEY, "1"); else localStorage.removeItem(RESET_KEY); } catch {} };
+
 type Props = {
   t: Strings; lang: Lang; setLang: (l: Lang) => void;
   step: AuthStep; setStep: (s: AuthStep) => void;
@@ -24,16 +29,15 @@ export default function Auth({ t, lang, setLang, step, setStep, email, setEmail,
   const [busy, setBusy] = useState(false);
   const [pinBuf, setPinBuf] = useState("");
   const pinTmp = useRef("");
-  const resetPin = useRef(false); // OTP was requested to reset the PIN (forgot / locked out)
 
   const go = (s: AuthStep, e = "") => { setErr(e); setPinBuf(""); setStep(s); };
 
   async function sendCode(addr: string, opts: { name?: string; reset?: boolean; errMsg?: string } = {}) {
     setBusy(true);
-    const { error } = await supabase.auth.signInWithOtp({ email: addr, options: { data: opts.name ? { name: opts.name } : undefined } });
+    const { error } = await supabase.auth.signInWithOtp({ email: addr, options: { data: opts.name ? { name: opts.name } : undefined, emailRedirectTo: location.origin } });
     setBusy(false);
     if (error) return setErr(error.message);
-    resetPin.current = !!opts.reset;
+    setResetPending(!!opts.reset);
     setOtp("");
     go("otp", opts.errMsg);
   }
@@ -52,7 +56,7 @@ export default function Auth({ t, lang, setLang, step, setStep, email, setEmail,
     if (error) { setBusy(false); return setErr(error.message); }
     const { data: hasPin } = await supabase.rpc("has_pin");
     setBusy(false);
-    go(hasPin && !resetPin.current ? "locked" : "setpin");
+    go(hasPin && !resetPending() ? "locked" : "setpin");
   }
 
   async function pinComplete(buf: string) {
@@ -61,7 +65,7 @@ export default function Auth({ t, lang, setLang, step, setStep, email, setEmail,
       if (buf !== pinTmp.current) return go("setpin", t.pinMismatch);
       const { error } = await supabase.rpc("set_pin", { new_pin: buf });
       if (error) return go("setpin", error.message);
-      resetPin.current = false;
+      setResetPending(false);
       return onUnlocked();
     }
     // locked
@@ -136,7 +140,7 @@ export default function Auth({ t, lang, setLang, step, setStep, email, setEmail,
             {errEl}
             <button className={primary} disabled={busy}>{t.verify} →</button>
             <div className="flex gap-5 text-sm font-extrabold">
-              <button type="button" className="text-accent-700 cursor-pointer" onClick={() => sendCode(email, { reset: resetPin.current })} disabled={busy}>{t.resend}</button>
+              <button type="button" className="text-accent-700 cursor-pointer" onClick={() => sendCode(email, { reset: resetPending() })} disabled={busy}>{t.resend}</button>
               <button type="button" className="text-accent-700 cursor-pointer" onClick={() => go("signup")}>{t.useOther}</button>
             </div>
           </form>

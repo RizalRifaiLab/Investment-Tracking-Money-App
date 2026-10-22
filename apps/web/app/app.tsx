@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { T, type Lang } from "@/lib/i18n";
-import Auth, { type AuthStep } from "./auth";
+import Auth, { resetPending, type AuthStep } from "./auth";
 import Shell, { type Profile } from "./shell";
 
 const AUTO_LOCK_MS = 5 * 60 * 1000;
@@ -40,7 +40,7 @@ export default function App() {
         supabase.from("profiles").select("*").eq("user_id", data.session.user.id).single(),
       ]);
       if (p) setProfile(p);
-      setStep(hasPin ? "locked" : "setpin");
+      setStep(hasPin && !resetPending() ? "locked" : "setpin");
     });
   }, []);
 
