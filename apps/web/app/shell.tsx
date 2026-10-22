@@ -1,11 +1,15 @@
 "use client";
 
 import { useState } from "react";
+import type { RiskProfile } from "@nilai/core";
 import { supabase } from "@/lib/supabase";
 import type { Lang, Strings } from "@/lib/i18n";
+import { useData, type Goal } from "./data";
+import { BankModal, GoalModal, HoldingModal } from "./modals";
+import { Dashboard, Holdings, viewModel, type Open } from "./portfolio";
 import { Segmented } from "./ui";
 
-export type Profile = { user_id: string; name: string; currency: "IDR" | "USD"; language: Lang; risk_profile: string };
+export type Profile = { user_id: string; name: string; currency: "IDR" | "USD"; language: Lang; risk_profile: RiskProfile };
 
 const TABS = ["home", "holdings", "cash", "goals", "markets", "advisor", "settings"] as const;
 type Tab = (typeof TABS)[number];
@@ -17,6 +21,26 @@ type Props = {
 
 export default function Shell({ t, lang, setLang, email, profile, setProfile, lock, logout }: Props) {
   const [tab, setTab] = useState<Tab>("home");
+  const [modal, setModal] = useState<Parameters<Open>[0] | null>(null);
+  const { data, error, reload } = useData();
+  const vm = data && viewModel(data, profile.currency, lang, profile.risk_profile, t);
+
+  async function activate(g: Goal) {
+    if (g.is_active) return;
+    // one active goal per user (unique index): clear the old one first
+    await supabase.from("goals").update({ is_active: false }).eq("is_active", true);
+    await supabase.from("goals").update({ is_active: true }).eq("id", g.id);
+    reload();
+  }
+
+  const close = () => setModal(null);
+  const common = { t, onClose: close, onSaved: reload };
+  const modalEl = modal && data && vm && (
+    modal.type === "holding" ? <HoldingModal {...common} h={data.holdings.find((x) => x.id === modal.id)} />
+    : modal.type === "bank" ? <BankModal {...common} a={data.accounts.find((x) => x.id === modal.id)} canDelete={data.accounts.length > 1} />
+    : <GoalModal {...common} g={data.goals.find((x) => x.id === modal.id)} hasActive={data.goals.some((x) => x.is_active)}
+        total={vm.total} invest={vm.invest} retPct={vm.retPct} usdIdr={vm.R} loc={vm.loc} />
+  );
   const setCur = (c: string) => {
     setProfile({ ...profile, currency: c as Profile["currency"] });
     supabase.from("profiles").update({ currency: c }).eq("user_id", profile.user_id).then();
@@ -55,7 +79,11 @@ export default function Shell({ t, lang, setLang, email, profile, setProfile, lo
         </div>
       </header>
 
-      <main className="px-4 py-5 wide:p-8">
+      {error && <div className="px-4 py-3 wide:px-8 text-sm font-semibold text-accent-700" role="alert">{error}</div>}
+      {vm && tab === "home" && <Dashboard vm={vm} t={t} cur={profile.currency} open={setModal} activate={activate} />}
+      {vm && tab === "holdings" && <Holdings vm={vm} t={t} open={setModal} />}
+      {modalEl}
+      {tab !== "home" && tab !== "holdings" && <main className="px-4 py-5 wide:p-8">
         {tab === "settings" ? (
           <section className="flex flex-col gap-3 max-w-[540px]">
             <div className="text-xs font-extrabold uppercase tracking-[0.08em]">{t.account}</div>
@@ -72,7 +100,7 @@ export default function Shell({ t, lang, setLang, email, profile, setProfile, lo
             <div className="text-[32px] font-extrabold tracking-[-0.02em] mt-2">{t.comingSoon}</div>
           </section>
         )}
-      </main>
+      </main>}
     </div>
   );
 }

@@ -57,8 +57,10 @@ Modals: Holding (class chips, IDR/USD chips, fields vary by class; Deposito = ba
 - [x] Auth email via Resend SMTP (sandbox sender onboarding@resend.dev → only the account owner receives mail until a domain is verified); templates send the 6-digit code; 30 emails/hour
 - [x] Auth screens: signup → OTP → set/confirm PIN; PIN unlock; forgot PIN; 5-try lockout; auto-lock after 5 min hidden
 - [x] Shell: tabs, IDR/USD, EN/ID (saved to profile), Lock; Settings has account + log out
-- [ ] Dashboard, Holdings (+ bank accounts), Goals, Cash flow (accounts + salary), Settings
-- [ ] Modals: holding, bank, goal, salary, transaction
+- [x] Dashboard (net worth, goal ETA, goals row, allocation, holdings table + filters), Holdings (+ bank accounts)
+- [ ] Goals tab (projection chart), Cash flow (accounts + salary), Settings (risk profile, change PIN)
+- [x] Modals: holding, bank, goal
+- [ ] Modals: salary, transaction
 - [ ] Edge function + pg_cron: CoinGecko (5 min) and USD/IDR (hourly) into `prices` / `fx_rates`
 - [ ] Salary auto-post cron
 - [ ] Google sign-in, PWA manifest
