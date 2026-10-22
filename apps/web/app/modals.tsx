@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { ASSET_CLASSES, etaDate, quantityFromAmount, formatShort, instrumentMeta, monthsTo, type AccountValue, type AssetClass, type Currency, type HoldingValue } from "@nilai/core";
+import { ASSET_CLASSES, etaDate, quantityFromAmount, providerCurrency, formatLong, formatShort, instrumentMeta, monthsTo, type AccountValue, type AssetClass, type Currency, type HoldingValue } from "@nilai/core";
 import { api } from "@/lib/api";
 import { supabase } from "@/lib/supabase";
 import type { Strings } from "@/lib/i18n";
@@ -49,8 +49,12 @@ export function HoldingModal({ h, usdIdr, ...c }: Common & { h?: HoldingValue; u
   const T = f.ticker.trim().toUpperCase();
   const lookKey = f.cls + ":" + T;
   const lk = look?.key === lookKey ? look : null;
+  const meta = lk ?? instrumentMeta(f.cls, dep ? "" : T);
+  // A live-priced asset is priced in its market's currency (VOO in USD, BBCA in IDR); only manual prices let the user pick.
+  const marketCcy = dep ? "IDR" : providerCurrency(meta);
+  const ccy: Currency = marketCcy ?? f.ccy;
   // Amount mode stores units, so the value follows the price from then on.
-  const q = quantityFromAmount(Number(amount), amountCcy, Number(f.price), f.ccy, usdIdr);
+  const q = quantityFromAmount(Number(amount), amountCcy, Number(f.price), ccy, usdIdr);
   const qty = byAmount ? (q ? String(q) : "") : f.qty;
 
   async function lookup() {
@@ -70,10 +74,10 @@ export function HoldingModal({ h, usdIdr, ...c }: Common & { h?: HoldingValue; u
     if (!(f.name.trim() || T)) return s.setError(t.errNameTicker);
     if (!dep && !positive(qty)) return s.setError(t.errQty);
     if (!positive(f.price)) return s.setError(t.errPrice);
-    const { provider, provider_symbol, tv_symbol } = lk ?? instrumentMeta(f.cls, dep ? "" : T);
+    const { provider, provider_symbol, tv_symbol } = meta;
     const row = {
       class: f.cls, name: (f.name.trim() || T), ticker: dep ? "" : T,
-      quantity: dep ? "1" : qty, manual_price: f.price, price_currency: dep ? "IDR" : f.ccy,
+      quantity: dep ? "1" : qty, manual_price: f.price, price_currency: ccy,
       deposit_rate: dep ? f.rate || "0" : null, maturity_date: dep && f.maturity ? f.maturity : null,
       provider, provider_symbol, tv_symbol,
     };
@@ -86,7 +90,8 @@ export function HoldingModal({ h, usdIdr, ...c }: Common & { h?: HoldingValue; u
     : lk?.quote ? t.liveQuote + fmtPrice(lk.quote.price, lk.quote.currency) + " · " + (f.cls === "Crypto" ? t.noteCgLive : t.noteFh)
     : lk && !lk.provider ? t.notFound
     : LIVE_CLASSES.includes(f.cls) ? (f.cls === "Crypto" ? t.noteCgLive : t.noteFh) : t.noteManual;
-  const qtyHint = byAmount && qty ? `${t.approx}${qty} ${f.cls === "Crypto" ? T : ""}`.trim() : "";
+  const worth = Number(qty) * Number(f.price) * (ccy === "USD" ? usdIdr : 1);
+  const qtyHint = !dep && worth > 0 ? `${t.approx}${qty} ${T} = ${formatLong(worth, "IDR", usdIdr)}${ccy === "USD" ? " (" + formatLong(worth, "USD", usdIdr) + ")" : ""}` : "";
   const qtyLabel = f.cls === "IDX stocks" ? t.sharesLot : f.cls === "Gold" ? t.grams : f.cls === "Reksa dana" ? t.unit : t.qty;
   const ph = f.cls === "Crypto" ? "BTC" : f.cls === "IDX stocks" ? "BBCA" : f.cls === "Gold" ? "Antam" : "VOO";
 
@@ -95,7 +100,7 @@ export function HoldingModal({ h, usdIdr, ...c }: Common & { h?: HoldingValue; u
       onDelete={h ? () => s.run(supabase.from("holdings").delete().eq("id", h.id)) : undefined}>
       <Chips label={t.cls} value={f.cls} onChange={(cls) => set({ cls, ccy: USD_CLASSES.includes(cls) ? "USD" : "IDR" })}
         options={ASSET_CLASSES.map((v) => ({ v, name: v }))} />
-      {!dep && <Chips label={t.pricedIn} value={f.ccy} onChange={(ccy) => set({ ccy })} options={[{ v: "IDR", name: "IDR" }, { v: "USD", name: "USD" }]} />}
+      {!dep && !marketCcy && <Chips label={t.pricedIn} value={f.ccy} onChange={(ccy) => set({ ccy })} options={[{ v: "IDR", name: "IDR" }, { v: "USD", name: "USD" }]} />}
       {!dep && <Chips label={t.enterBy} value={byAmount ? "amount" : "qty"} onChange={(v) => setByAmount(v === "amount")}
         options={[{ v: "amount", name: t.byAmount }, { v: "qty", name: t.byQty }]} />}
       {!dep && byAmount && <Chips label={t.amountCcy} value={amountCcy} onChange={setAmountCcy} options={[{ v: "IDR", name: "Rupiah" }, { v: "USD", name: "USD" }]} />}
@@ -114,7 +119,7 @@ export function HoldingModal({ h, usdIdr, ...c }: Common & { h?: HoldingValue; u
             {byAmount
               ? <Field label={`${t.amountL} (${amountCcy})`} type="number" inputMode="decimal" min="0" step="any" value={amount} onChange={(e) => setAmount(e.target.value)} />
               : <Field label={qtyLabel} type="number" inputMode="decimal" min="0" step="any" value={f.qty} onChange={(e) => set({ qty: e.target.value })} />}
-            <Field label={`${t.pricePerUnit} (${f.ccy})`} type="number" inputMode="decimal" min="0" step="any" value={f.price} onChange={(e) => set({ price: e.target.value })} />
+            <Field label={`${t.pricePerUnit} (${ccy})`} type="number" inputMode="decimal" min="0" step="any" value={f.price} onChange={(e) => set({ price: e.target.value })} />
           </>
         )}
       </div>

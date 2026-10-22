@@ -85,3 +85,10 @@ export function quantityFromAmount(amount: number, amountCcy: 'IDR' | 'USD', pri
   const inPriceCcy = amountCcy === priceCcy ? amount : amountCcy === 'IDR' ? amount / usdIdr : amount * usdIdr;
   return +(inPriceCcy / price).toFixed(10); // NUMERIC(28,10) column
 }
+
+/** Currency a live provider quotes in; null = manual price, the user picks. */
+export function providerCurrency(m: { provider: Meta['provider']; provider_symbol: string | null }): 'IDR' | 'USD' | null {
+  if (m.provider === 'coingecko') return 'USD';
+  if (m.provider === 'yahoo') return m.provider_symbol?.endsWith('.JK') ? 'IDR' : 'USD';
+  return null;
+}

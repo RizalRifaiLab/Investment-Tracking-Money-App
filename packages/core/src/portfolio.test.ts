@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buildPortfolio, instrumentMeta, quantityFromAmount, type AccountValue, type HoldingValue } from './portfolio';
+import { buildPortfolio, instrumentMeta, providerCurrency, quantityFromAmount, type AccountValue, type HoldingValue } from './portfolio';
 
 const h = (o: Partial<HoldingValue>): HoldingValue => ({
   id: 'h', class: 'Crypto', name: 'Bitcoin', ticker: 'BTC', quantity: 1, manual_price: 1, price_currency: 'USD',
@@ -62,5 +62,14 @@ describe('quantityFromAmount', () => {
   it('0 for missing inputs', () => {
     expect(quantityFromAmount(0, 'IDR', 1, 'IDR', 1)).toBe(0);
     expect(quantityFromAmount(1, 'IDR', 0, 'IDR', 1)).toBe(0);
+  });
+});
+
+describe('providerCurrency', () => {
+  it('follows the market', () => {
+    expect(providerCurrency(instrumentMeta('ETF', 'VOO'))).toBe('USD');
+    expect(providerCurrency(instrumentMeta('IDX stocks', 'BBCA'))).toBe('IDR');
+    expect(providerCurrency(instrumentMeta('Crypto', 'BTC'))).toBe('USD');
+    expect(providerCurrency(instrumentMeta('Reksa dana', 'RDPU'))).toBeNull();
   });
 });
