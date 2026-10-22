@@ -1,10 +1,9 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { CATEGORIES, formatShort, type Category, type Currency } from "@nilai/core";
-import { api } from "@/lib/api";
+import { CATEGORIES, formatPct, formatShort, reviewMonth, type Category, type Currency } from "@nilai/core";
 import { supabase } from "@/lib/supabase";
-import type { Lang, Strings } from "@/lib/i18n";
+import type { Strings } from "@/lib/i18n";
 import { ImportModal } from "./importer";
 import type { Data, Salary } from "./data";
 import type { Open } from "./portfolio";
@@ -16,17 +15,14 @@ const ym = (d: Date) => d.getFullYear() + "-" + String(d.getMonth() + 1).padStar
 const todayIso = () => { const d = new Date(); return ym(d) + "-" + String(d.getDate()).padStart(2, "0"); };
 const cellShadow = "shadow-[2px_0_0_var(--color-text),0_2px_0_var(--color-text),2px_2px_0_var(--color-text)]";
 
-type Insight = { k: string; title: string; body: string };
-
-export function CashFlow({ data, t, lang, cur, loc, open, reload }: { data: Data; t: Strings; lang: Lang; cur: Currency; loc: string; open: Open; reload: () => void }) {
+export function CashFlow({ data, t, cur, loc, open, reload }: { data: Data; t: Strings; cur: Currency; loc: string; open: Open; reload: () => void }) {
   const R = data.usdIdr, S = (v: number) => formatShort(v, cur, R);
   const [month, setMonth] = useState(() => ym(new Date()));
   const [txns, setTxns] = useState<Txn[]>([]);
   const [salaryTx, setSalaryTx] = useState<string | null>(null); // date of this month's Salary txn
   const [modal, setModal] = useState<"txn" | "salary" | "import" | null>(null);
   const [months, setMonths] = useState<string[]>([]); // months that have any transaction, newest first
-  const [insight, setInsight] = useState<Insight[] | null>(null);
-  const [analysing, setAnalysing] = useState(false);
+  const [history, setHistory] = useState<Txn[]>([]); // the two months before, for trends
   const [err, setErr] = useState("");
 
   const load = useCallback(() => {
@@ -37,23 +33,16 @@ export function CashFlow({ data, t, lang, cur, loc, open, reload }: { data: Data
       supabase.from("transactions").select("id,account_id,date,description,amount,category,source").gte("date", month + "-01").lt("date", end).order("date", { ascending: false }).order("created_at", { ascending: false }),
       supabase.from("transactions").select("date").eq("category", "Salary").gte("date", nowStart).order("date").limit(1).maybeSingle(),
       supabase.from("transactions").select("date"),
-      supabase.from("cashflow_insights").select("items").eq("month", month + "-01").eq("language", lang).maybeSingle(),
-    ]).then(([tx, sal, all, ins]) => {
+      supabase.from("transactions").select("id,account_id,date,description,amount,category,source").gte("date", ym(new Date(y, m - 3, 1)) + "-01").lt("date", month + "-01"),
+    ]).then(([tx, sal, all, prev]) => {
       if (tx.error) return setErr(tx.error.message);
       setTxns(tx.data);
       setSalaryTx(sal.data?.date ?? null);
       setMonths([...new Set((all.data ?? []).map((x) => x.date.slice(0, 7)))].sort().reverse());
-      setInsight(ins.data?.items ?? null);
+      setHistory(prev.data ?? []);
     });
-  }, [month, lang]);
+  }, [month]);
 
-  async function analyse() {
-    setAnalysing(true);
-    setErr("");
-    const r = await api<{ items: Insight[] }>("/api/insights", { method: "POST", body: JSON.stringify({ month, lang }) }).catch((e: Error) => { setErr(e.message); return null; });
-    setAnalysing(false);
-    if (r) setInsight(r.items);
-  }
   useEffect(() => { load(); }, [load]);
   const changed = () => { load(); reload(); };
 
@@ -86,6 +75,17 @@ export function CashFlow({ data, t, lang, cur, loc, open, reload }: { data: Data
     if (error) return setErr(error.message);
     changed();
   }
+  const review = reviewMonth([...history, ...txns].map((x) => ({ date: x.date, idr: toIdr(x), category: x.category, description: x.description })), month);
+  const fill = (tpl: string, v: Record<string, string | number>) => tpl.replace(/\{(\w+)\}/g, (_, k) => String(v[k]));
+  const reviewItems = !review.top ? [] : [
+    { k: t.rvTopK, title: fill(t.rvTop, { cat: review.top.cat, share: formatPct(review.top.share), amount: S(review.top.amount) }),
+      body: fill(t.rvTopBody, { payee: review.top.payee, payeeAmount: S(review.top.payeeAmount) }) },
+    review.net < 0 ? { k: t.rvWatchK, title: fill(t.rvOver, { gap: S(-review.net) }), body: t.rvOverBody }
+      : review.rising ? { k: t.rvWatchK, title: fill(t.rvRising, { cat: review.rising.cat, now: S(review.rising.now), before: S(review.rising.before) }), body: fill(t.rvRisingBody, { n: review.rising.months }) }
+      : { k: t.rvWatchK, title: t.rvCalm, body: history.length ? t.rvCalmBody : t.rvNoHistory },
+    review.net > 0 ? { k: t.rvActK, title: fill(t.rvSurplus, { net: S(review.net) }), body: fill(t.rvSurplusBody, { rate: formatPct(review.savingsRate ?? 0) }) }
+      : review.cut ? { k: t.rvActK, title: fill(t.rvCut, { cat: review.cut.cat, save: S(review.cut.save) }), body: t.rvCutBody } : null,
+  ].filter((x): x is { k: string; title: string; body: string } => !!x);
   const shift = (d: number) => { const [y, m] = month.split("-").map(Number); setMonth(ym(new Date(y, m - 1 + d, 1))); };
   const pad = "px-4 py-5 wide:p-8";
   const row = (label: string, value: string) => <div className="flex justify-between gap-3"><span>{label}</span><b className="text-right">{value}</b></div>;
@@ -166,25 +166,18 @@ export function CashFlow({ data, t, lang, cur, loc, open, reload }: { data: Data
         </div>
       </div>
 
-      {txns.length > 0 && (
+      {review.top && (
         <div className={`${pad} border-b-2 border-text flex flex-col gap-4`}>
-          <div className="flex justify-between items-baseline gap-3">
-            <div className={`${kicker} text-accent-700`}>{t.analysis}</div>
-            <button onClick={analyse} disabled={analysing} className="font-extrabold text-[13px] text-accent-700 cursor-pointer">
-              {analysing ? t.analysing : insight ? t.reanalyse : t.analyse}
-            </button>
+          <div className={`${kicker} text-accent-700`}>{t.analysis}</div>
+          <div className="grid wide:grid-cols-3 gap-4">
+            {reviewItems.map((b) => (
+              <div key={b.k} className="flex flex-col gap-1 pb-4 border-b border-divider wide:border-b-0">
+                <div className="text-[11px] font-extrabold tracking-[0.08em] uppercase text-neutral-700">{b.k}</div>
+                <div className="text-[17px] font-extrabold leading-tight text-pretty">{b.title}</div>
+                <div className="text-sm text-neutral-800 text-pretty">{b.body}</div>
+              </div>
+            ))}
           </div>
-          {insight ? (
-            <div className="grid wide:grid-cols-3 gap-4">
-              {insight.map((b, i) => (
-                <div key={i} className="flex flex-col gap-1 pb-4 border-b border-divider wide:border-b-0">
-                  <div className="text-[11px] font-extrabold tracking-[0.08em] uppercase text-neutral-700">{b.k}</div>
-                  <div className="text-[17px] font-extrabold leading-tight text-pretty">{b.title}</div>
-                  <div className="text-sm text-neutral-800 text-pretty">{b.body}</div>
-                </div>
-              ))}
-            </div>
-          ) : <div className="text-sm text-neutral-800">{t.noInsight}</div>}
         </div>
       )}
 

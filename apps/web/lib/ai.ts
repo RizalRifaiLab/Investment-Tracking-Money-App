@@ -3,12 +3,12 @@ import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
 import { z } from "zod";
 import { CATEGORIES } from "@nilai/core";
 
-// ARCHITECTURE.md: Haiku for statement parsing and briefs (cheap, high volume).
+// Fallback reader for statements the rule-based parsers do not cover (only used when ANTHROPIC_API_KEY is set).
 export const MODEL = "claude-haiku-5-5";
 const client = () => new Anthropic(); // ANTHROPIC_API_KEY from the server env
 
 /** Streams (outputs can be long) and validates the JSON answer against `schema`. */
-async function structured<T extends z.ZodType>(schema: T, system: string, user: string, effort: "low" | "medium"): Promise<z.infer<T>> {
+async function structured<T extends z.ZodType>(schema: T, system: string, user: string, effort: "low"): Promise<z.infer<T>> {
   const msg = await client().messages.stream({
     model: MODEL, max_tokens: 64000, system,
     output_config: { format: zodOutputFormat(schema), effort },
@@ -48,22 +48,4 @@ Rules:
 
 STATEMENT:
 ${text}`, "low");
-}
-
-const Insights = z.object({
-  items: z.array(z.object({
-    k: z.string().describe("One or two word label"),
-    title: z.string().describe("One sentence with a specific finding or action and IDR amount"),
-    body: z.string().describe("One or two short sentences explaining why"),
-  })),
-});
-export type Insight = z.infer<typeof Insights>["items"][number];
-
-export async function analyseMonth(summary: string, lang: "en" | "id"): Promise<Insight[]> {
-  const r = await structured(Insights,
-    `You review one month of a personal cash flow for an Indonesian user of Nilai. Reply in ${lang === "id" ? "Bahasa Indonesia" : "English"}. Write IDR amounts like "Rp 2,5 jt" or "Rp 1,2 M". Be specific and practical; no generic advice.`,
-    `Give exactly 3 items, most important first: where the money went (top spending), what to watch (unusual items, categories rising versus the previous months, or money out above money in), and one concrete action. Base everything only on these numbers.
-
-${summary}`, "medium");
-  return r.items.slice(0, 3);
 }

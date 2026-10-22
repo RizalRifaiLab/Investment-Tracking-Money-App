@@ -7,12 +7,12 @@ import type { Strings } from "@/lib/i18n";
 import { Chips, Field, Modal } from "./ui";
 
 type Row = { date: string; description: string; amount: number; category: Category; inc: boolean };
-type StmtAccount = { label: string; currency: string; closing_balance: number | null; rows: Row[]; target: string; useClosing: boolean };
+type StmtAccount = { label: string; currency: string; closing_balance: number | null; rows: Row[]; target: string; useClosing: boolean; balanced: boolean };
 const SKIP = "skip";
 
 const ERR: Record<string, keyof Strings> = {
   needPassword: "errNeedPassword", badPassword: "errBadPassword", empty: "errEmpty", type: "errType",
-  tooBig: "errTooBig", read: "errRead", noFile: "errNoFile",
+  tooBig: "errTooBig", read: "errRead", noFile: "errNoFile", unsupported: "errUnsupported",
 };
 
 /** Default target: a Nilai account in the same currency whose bank name appears in the statement's account label. */
@@ -45,10 +45,10 @@ export function ImportModal({ t, accounts, onClose, onDone }: {
       setStep("pick");
       return setErr(j.code === "ai" ? t.errAi + (j.error ?? "") : t[ERR[j.code] ?? "errRead"]);
     }
-    const accs: StmtAccount[] = (j.accounts as { label: string; currency: string; closing_balance: number | null; transactions: Omit<Row, "inc">[] }[])
+    const accs: StmtAccount[] = (j.accounts as { label: string; currency: string; closing_balance: number | null; balanced?: boolean; transactions: Omit<Row, "inc">[] }[])
       .filter((a) => a.transactions.length)
       .map((a) => ({
-        label: a.label, currency: a.currency.toUpperCase(), closing_balance: a.closing_balance,
+        label: a.label, currency: a.currency.toUpperCase(), closing_balance: a.closing_balance, balanced: a.balanced ?? true,
         rows: a.transactions.map((x) => ({ ...x, inc: true })),
         target: guessTarget(a.label, a.currency.toUpperCase(), accounts), useClosing: a.closing_balance != null,
       }));
@@ -115,6 +115,7 @@ export function ImportModal({ t, accounts, onClose, onDone }: {
               options={[...accounts.filter((x) => x.currency === a.currency).map((x) => ({ v: x.id, name: `${x.bank} · ${x.label}` })), { v: SKIP, name: t.skip }]} />
             {a.target !== SKIP && (
               <>
+                {!a.balanced && <div className="text-sm font-semibold text-accent-700">{t.unbalanced}</div>}
                 {sal.length > 0 && <div className="text-sm font-extrabold px-3 py-2.5 bg-accent-100 text-accent-800">{t.salaryDetected}{sal.map((r) => money(r.amount, a.currency) + " · " + r.date).join(", ")}</div>}
                 <div className="text-xs text-neutral-700">{t.imTip}</div>
                 <div className="max-h-72 overflow-auto border-y border-divider">
