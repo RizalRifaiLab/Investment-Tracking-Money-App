@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { ASSET_CLASSES, etaDate, formatShort, instrumentMeta, monthsTo, type AccountValue, type AssetClass, type Currency, type HoldingValue } from "@nilai/core";
+import { ASSET_CLASSES, etaDate, quantityFromAmount, formatShort, instrumentMeta, monthsTo, type AccountValue, type AssetClass, type Currency, type HoldingValue } from "@nilai/core";
 import { api } from "@/lib/api";
 import { supabase } from "@/lib/supabase";
 import type { Strings } from "@/lib/i18n";
@@ -30,7 +30,7 @@ function useSave({ onClose, onSaved }: Common) {
   return { busy, error, setError, run };
 }
 
-export function HoldingModal({ h, ...c }: Common & { h?: HoldingValue }) {
+export function HoldingModal({ h, usdIdr, ...c }: Common & { h?: HoldingValue; usdIdr: number }) {
   const { t } = c;
   const s = useSave(c);
   const [f, setF] = useState({
@@ -38,8 +38,9 @@ export function HoldingModal({ h, ...c }: Common & { h?: HoldingValue }) {
     qty: h ? String(h.quantity) : "", price: h ? String(h.manual_price) : "", ccy: (h?.price_currency ?? "USD") as Currency,
     rate: h?.deposit_rate != null ? String(h.deposit_rate) : "", maturity: h?.maturity_date ?? "",
   });
-  const [byAmount, setByAmount] = useState(false);
+  const [byAmount, setByAmount] = useState(!h); // new holdings: "I have Rp 5 jt of BTC"
   const [amount, setAmount] = useState("");
+  const [amountCcy, setAmountCcy] = useState<Currency>("IDR");
   // Editing keeps the stored provider ids until the class or ticker changes.
   const [look, setLook] = useState<Lookup | null>(h ? { key: h.class + ":" + h.ticker, provider: h.provider, provider_symbol: h.provider_symbol, tv_symbol: h.tv_symbol, name: null, quote: null } : null);
   const [looking, setLooking] = useState(false);
@@ -48,8 +49,9 @@ export function HoldingModal({ h, ...c }: Common & { h?: HoldingValue }) {
   const T = f.ticker.trim().toUpperCase();
   const lookKey = f.cls + ":" + T;
   const lk = look?.key === lookKey ? look : null;
-  // Amount mode: quantity = amount ÷ price (what you own is units; the value then follows the price).
-  const qty = byAmount ? (positive(amount) && positive(f.price) ? String(+(Number(amount) / Number(f.price)).toFixed(10)) : "") : f.qty;
+  // Amount mode stores units, so the value follows the price from then on.
+  const q = quantityFromAmount(Number(amount), amountCcy, Number(f.price), f.ccy, usdIdr);
+  const qty = byAmount ? (q ? String(q) : "") : f.qty;
 
   async function lookup() {
     if (!LIVE_CLASSES.includes(f.cls) || !T || lk) return;
@@ -95,7 +97,8 @@ export function HoldingModal({ h, ...c }: Common & { h?: HoldingValue }) {
         options={ASSET_CLASSES.map((v) => ({ v, name: v }))} />
       {!dep && <Chips label={t.pricedIn} value={f.ccy} onChange={(ccy) => set({ ccy })} options={[{ v: "IDR", name: "IDR" }, { v: "USD", name: "USD" }]} />}
       {!dep && <Chips label={t.enterBy} value={byAmount ? "amount" : "qty"} onChange={(v) => setByAmount(v === "amount")}
-        options={[{ v: "qty", name: t.byQty }, { v: "amount", name: t.byAmount }]} />}
+        options={[{ v: "amount", name: t.byAmount }, { v: "qty", name: t.byQty }]} />}
+      {!dep && byAmount && <Chips label={t.amountCcy} value={amountCcy} onChange={setAmountCcy} options={[{ v: "IDR", name: "Rupiah" }, { v: "USD", name: "USD" }]} />}
       <div className="grid grid-cols-[repeat(auto-fit,minmax(200px,1fr))] gap-3">
         {dep ? (
           <>
@@ -109,7 +112,7 @@ export function HoldingModal({ h, ...c }: Common & { h?: HoldingValue }) {
             <Field label="Ticker" value={f.ticker} onChange={(e) => set({ ticker: e.target.value })} onBlur={lookup} placeholder={ph} autoCapitalize="characters" />
             <Field label={t.name} value={f.name} onChange={(e) => set({ name: e.target.value })} />
             {byAmount
-              ? <Field label={`${t.amountL} (${f.ccy})`} type="number" inputMode="decimal" min="0" step="any" value={amount} onChange={(e) => setAmount(e.target.value)} />
+              ? <Field label={`${t.amountL} (${amountCcy})`} type="number" inputMode="decimal" min="0" step="any" value={amount} onChange={(e) => setAmount(e.target.value)} />
               : <Field label={qtyLabel} type="number" inputMode="decimal" min="0" step="any" value={f.qty} onChange={(e) => set({ qty: e.target.value })} />}
             <Field label={`${t.pricePerUnit} (${f.ccy})`} type="number" inputMode="decimal" min="0" step="any" value={f.price} onChange={(e) => set({ price: e.target.value })} />
           </>

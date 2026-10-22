@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buildPortfolio, instrumentMeta, type AccountValue, type HoldingValue } from './portfolio';
+import { buildPortfolio, instrumentMeta, quantityFromAmount, type AccountValue, type HoldingValue } from './portfolio';
 
 const h = (o: Partial<HoldingValue>): HoldingValue => ({
   id: 'h', class: 'Crypto', name: 'Bitcoin', ticker: 'BTC', quantity: 1, manual_price: 1, price_currency: 'USD',
@@ -49,5 +49,18 @@ describe('instrumentMeta', () => {
     expect(instrumentMeta('ETF', 'voo').provider_symbol).toBe('VOO');
     expect(instrumentMeta('Gold', '').tv_symbol).toBe('OANDA:XAUUSD');
     expect(instrumentMeta('Reksa dana', 'X').provider).toBeNull();
+  });
+});
+
+describe('quantityFromAmount', () => {
+  it('converts across currencies', () => {
+    expect(quantityFromAmount(5_000_000, 'IDR', 81_134, 'USD', 18_030)).toBeCloseTo(0.0034179, 6); // Rp 5 jt of BTC
+    expect(quantityFromAmount(100, 'USD', 50_000, 'USD', 18_030)).toBe(0.002);
+    expect(quantityFromAmount(100, 'USD', 5_175, 'IDR', 16_000)).toBeCloseTo(309.18, 2); // $100 of BBCA
+    expect(quantityFromAmount(9_350_000, 'IDR', 9_350, 'IDR', 16_000)).toBe(1000);
+  });
+  it('0 for missing inputs', () => {
+    expect(quantityFromAmount(0, 'IDR', 1, 'IDR', 1)).toBe(0);
+    expect(quantityFromAmount(1, 'IDR', 0, 'IDR', 1)).toBe(0);
   });
 });

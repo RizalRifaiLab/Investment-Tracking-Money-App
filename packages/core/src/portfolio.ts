@@ -78,3 +78,10 @@ export function instrumentMeta(cls: AssetClass, ticker: string): Meta {
     default: return none;
   }
 }
+
+/** Units held from "I have this much of it": amount (IDR or USD) converted to the price currency, ÷ unit price. */
+export function quantityFromAmount(amount: number, amountCcy: 'IDR' | 'USD', price: number, priceCcy: 'IDR' | 'USD', usdIdr: number): number {
+  if (!(amount > 0 && price > 0 && usdIdr > 0)) return 0;
+  const inPriceCcy = amountCcy === priceCcy ? amount : amountCcy === 'IDR' ? amount / usdIdr : amount * usdIdr;
+  return +(inPriceCcy / price).toFixed(10); // NUMERIC(28,10) column
+}

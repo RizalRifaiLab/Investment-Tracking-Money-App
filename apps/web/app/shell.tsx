@@ -46,7 +46,7 @@ export default function Shell({ t, lang, setLang, email, profile, setProfile, lo
   const close = () => setModal(null);
   const common = { t, onClose: close, onSaved: reload };
   const modalEl = modal && data && vm && (
-    modal.type === "holding" ? <HoldingModal {...common} h={data.holdings.find((x) => x.id === modal.id)} />
+    modal.type === "holding" ? <HoldingModal {...common} h={data.holdings.find((x) => x.id === modal.id)} usdIdr={vm.R} />
     : modal.type === "bank" ? <BankModal {...common} a={data.accounts.find((x) => x.id === modal.id)} canDelete={data.accounts.length > 1} />
     : <GoalModal {...common} g={data.goals.find((x) => x.id === modal.id)} hasActive={data.goals.some((x) => x.is_active)}
         total={vm.total} invest={vm.invest} retPct={vm.retPct} usdIdr={vm.R} loc={vm.loc} />
