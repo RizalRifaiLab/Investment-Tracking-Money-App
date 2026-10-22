@@ -54,7 +54,7 @@ Modals: Holding (class chips, IDR/USD chips, fields vary by class; Deposito = ba
 - [x] Monorepo: `apps/web` (Next.js 16, Tailwind v4 tokens, Archivo), `packages/core` (formatters, projection, constants + tests)
 - [x] `supabase/migrations/…_init.sql`: full data model, RLS, PIN RPCs, valuation views (not yet applied — needs project)
 - [x] Supabase project (via Vercel integration, ap-southeast-1), migration pushed
-- [ ] Email template sends the code (`{{ .Token }}`) — manual step in Supabase dashboard
+- [x] Auth email via Resend SMTP (sandbox sender onboarding@resend.dev → only the account owner receives mail until a domain is verified); templates send the 6-digit code; 30 emails/hour
 - [x] Auth screens: signup → OTP → set/confirm PIN; PIN unlock; forgot PIN; 5-try lockout; auto-lock after 5 min hidden
 - [x] Shell: tabs, IDR/USD, EN/ID (saved to profile), Lock; Settings has account + log out
 - [ ] Dashboard, Holdings (+ bank accounts), Goals, Cash flow (accounts + salary), Settings
