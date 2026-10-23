@@ -99,7 +99,7 @@ export default function Shell({ t, lang, setLang, email, profile, setProfile, lo
       {vm && data && tab === "cash" && <CashFlow data={data} t={t} cur={profile.currency} loc={vm.loc} open={setModal} reload={reload} />}
       {vm && tab === "holdings" && <Holdings vm={vm} t={t} open={setModal} refresh={refresh} refreshing={refreshing} />}
       {modalEl}
-      {vm && tab === "goals" && <Goals vm={vm} t={t} profileLabel={profileLabel(t, profile.risk_profile)} open={setModal} activate={activate} />}
+      {vm && tab === "goals" && <Goals vm={vm} t={t} lang={lang} profileLabel={profileLabel(t, profile.risk_profile)} open={setModal} activate={activate} />}
       {data && tab === "markets" && <Markets data={data} t={t} lang={lang} refresh={refresh} refreshing={refreshing} />}
       {data && tab === "settings" && <Settings t={t} lang={lang} setLang={setLang} email={email} profile={profile} setProfile={setProfile} data={data} reload={reload} lock={lock} logout={logout} />}
       {tab === "advisor" && <Advisor t={t} lang={lang} userId={profile.user_id} />}

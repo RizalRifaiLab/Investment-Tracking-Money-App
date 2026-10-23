@@ -26,7 +26,7 @@ function TvChart({ symbol, lang }: { symbol: string; lang: Lang }) {
     el.appendChild(sc);
     return () => { el.innerHTML = ""; };
   }, [symbol, lang]);
-  return <div ref={ref} className="tradingview-widget-container h-[420px] wide:h-[620px] w-full" />;
+  return <div ref={ref} className="tradingview-widget-container flex-1 min-h-0 wide:flex-none wide:h-[620px] w-full" />;
 }
 
 export function Markets({ data, t, lang, refresh, refreshing }: { data: Data; t: Strings; lang: Lang; refresh: () => void; refreshing: boolean }) {
@@ -44,6 +44,15 @@ export function Markets({ data, t, lang, refresh, refreshing }: { data: Data; t:
   const watch = [...fromHoldings, ...fixed].filter((w) => !seen.has(w.tv) && seen.add(w.tv));
   const [sym, setSym] = useState(watch[0].tv);
   const current = watch.find((w) => w.tv === sym);
+  // Narrow screens: the chart opens as a full-screen sheet instead of sitting under the list.
+  const [sheet, setSheet] = useState(false);
+  useEffect(() => {
+    if (!sheet) return;
+    const kd = (e: KeyboardEvent) => { if (e.key === "Escape") setSheet(false); };
+    window.addEventListener("keydown", kd);
+    document.body.style.overflow = "hidden";
+    return () => { window.removeEventListener("keydown", kd); document.body.style.overflow = ""; };
+  }, [sheet]);
 
   return (
     <div className="grid wide:grid-cols-[340px_1fr] gap-0.5 bg-text border-b-2 border-text">
@@ -53,7 +62,7 @@ export function Markets({ data, t, lang, refresh, refreshing }: { data: Data; t:
           <button onClick={refresh} disabled={refreshing} className="font-extrabold text-[13px] text-accent-700 cursor-pointer">{refreshing ? t.updating : t.refresh}</button>
         </div>
         {watch.map((w) => (
-          <button key={w.tv} onClick={() => setSym(w.tv)} aria-pressed={w.tv === sym}
+          <button key={w.tv} onClick={() => { setSym(w.tv); setSheet(true); }} aria-pressed={w.tv === sym}
             className={`grid grid-cols-[1fr_auto] gap-x-3 gap-y-0.5 px-6 py-3 border-t border-divider text-left cursor-pointer hover:bg-neutral-200 ${w.tv === sym ? "bg-accent-100" : ""}`}>
             <b className="text-sm">{w.ticker}</b><b className="text-sm text-right">{w.priceS}</b>
             <span className="text-xs text-neutral-700">{w.name}</span>
@@ -66,11 +75,17 @@ export function Markets({ data, t, lang, refresh, refreshing }: { data: Data; t:
           {t.mkNote} <a href="https://www.tradingview.com/" target="_blank" rel="noopener nofollow">TradingView</a>
         </div>
       </div>
-      <div className="bg-bg flex flex-col min-w-0">
-        <div className="px-6 py-4 border-b-2 border-text flex justify-between items-baseline gap-3">
-          <b className="text-xl">{current?.ticker ?? sym}</b><span className="text-xs text-neutral-700">TradingView</span>
+      <div role={sheet ? "dialog" : undefined} aria-modal={sheet || undefined} aria-label={current?.ticker ?? sym}
+        className={`${sheet ? "fixed inset-0 z-50 flex" : "hidden"} wide:static wide:z-auto wide:flex bg-bg flex-col min-w-0`}>
+        <div className="px-6 py-4 border-b-2 border-text flex justify-between items-center gap-3">
+          <b className="text-xl">{current?.ticker ?? sym}</b>
+          <span className="flex items-center gap-3">
+            <span className="text-xs text-neutral-700">{[current?.priceS !== "—" && current?.priceS, "TradingView"].filter(Boolean).join(" · ")}</span>
+            <button onClick={() => setSheet(false)} aria-label={t.cancel} className="wide:hidden size-11 -mr-3 text-lg cursor-pointer">✕</button>
+          </span>
         </div>
-        <TvChart symbol={sym} lang={lang} />
+        {/* remount when the sheet opens: the widget sizes itself on load and was hidden until now */}
+        <TvChart key={String(sheet)} symbol={sym} lang={lang} />
       </div>
     </div>
   );

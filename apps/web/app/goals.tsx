@@ -1,7 +1,8 @@
 "use client";
 
+import { useState } from "react";
 import { MAX_MONTHS, projectPath } from "@nilai/core";
-import type { Strings } from "@/lib/i18n";
+import type { Lang, Strings } from "@/lib/i18n";
 import type { Goal } from "./data";
 import type { Open, viewModel } from "./portfolio";
 import { btnOutline, kicker } from "./ui";
@@ -10,7 +11,8 @@ type VM = ReturnType<typeof viewModel>;
 const W = 800, H = 280;
 const cellShadow = "shadow-[2px_0_0_var(--color-text),0_2px_0_var(--color-text),2px_2px_0_var(--color-text)]";
 
-export function Goals({ vm, t, profileLabel, open, activate }: { vm: VM; t: Strings; profileLabel: string; open: Open; activate: (g: Goal) => void }) {
+export function Goals({ vm, t, lang, profileLabel, open, activate }: { vm: VM; t: Strings; lang: Lang; profileLabel: string; open: Open; activate: (g: Goal) => void }) {
+  const [hi, setHi] = useState<number | null>(null); // hovered month index on the projection
   // Chart long enough to show every reachable goal (+6 months), between 2 and 30 years.
   const maxN = Math.min(360, Math.max(24, ...vm.goals.filter((g) => g.n < MAX_MONTHS).map((g) => g.n + 6)));
   const proj = projectPath(vm.total, maxN, vm.invest, vm.retPct);
@@ -19,6 +21,12 @@ export function Goals({ vm, t, profileLabel, open, activate }: { vm: VM; t: Stri
   const line = proj.map((v, i) => (i ? "L" : "M") + (i * st).toFixed(1) + "," + Y(v).toFixed(1)).join(" ");
   const now = new Date();
   const ticks = [0, 0.25, 0.5, 0.75, 1].map((f) => new Date(now.getFullYear(), now.getMonth() + Math.round(maxN * f), 1).getFullYear() + (f === 0 ? t.now : ""));
+  const monthName = (i: number) => new Date(now.getFullYear(), now.getMonth() + i, 1).toLocaleDateString(lang === "id" ? "id-ID" : "en-GB", { month: "short", year: "numeric" });
+  const pick = (e: React.PointerEvent<SVGSVGElement>) => {
+    const r = e.currentTarget.getBoundingClientRect();
+    setHi(Math.max(0, Math.min(maxN, Math.round(((e.clientX - r.left) / r.width) * maxN))));
+  };
+  const putIn = hi == null ? 0 : vm.total + vm.invest * hi;
   const stat = (label: string, value: string) => (
     <div className={`${cellShadow} bg-bg px-4 py-5 wide:p-8`}><div className={kicker}>{label}</div><div className="text-[28px] wide:text-4xl font-extrabold tracking-[-0.02em]">{value}</div></div>
   );
@@ -36,7 +44,19 @@ export function Goals({ vm, t, profileLabel, open, activate }: { vm: VM; t: Stri
           <div className={kicker}>{t.projection}</div>
           <div className="text-[13px] text-neutral-800">{t.assumes}{vm.retPct}%{t.perYear}, {vm.S(vm.invest)}{t.perMonth}</div>
         </div>
-        <svg viewBox={`0 0 ${W} ${H}`} className="w-full block overflow-visible" role="img" aria-label={t.projection}>
+        <div className="relative">
+        {hi != null && (
+          <div className="absolute top-0 z-10 -translate-x-1/2 pointer-events-none bg-bg border-2 border-text px-3 py-2 text-[13px] min-w-[170px] flex flex-col gap-0.5"
+            style={{ left: `clamp(90px, ${(hi / maxN) * 100}%, calc(100% - 90px))` }}>
+            <span className="text-xs text-neutral-700">{monthName(hi)}{hi === 0 ? t.now : ""}</span>
+            <b className="text-lg leading-tight">{vm.S(proj[hi])}</b>
+            <span>{t.putIn} {vm.S(putIn)}</span>
+            <span>{t.growth} {vm.S(proj[hi] - putIn)}</span>
+            {vm.goals.filter((g) => g.target <= proj[hi]).map((g) => <span key={g.id} className="font-extrabold text-accent-700">✓ {g.name}</span>)}
+          </div>
+        )}
+        <svg viewBox={`0 0 ${W} ${H}`} className="w-full block overflow-visible touch-pan-y cursor-crosshair" role="img" aria-label={t.projection}
+          onPointerMove={pick} onPointerDown={pick} onPointerLeave={(e) => e.pointerType === "mouse" && setHi(null)}>
           {vm.goals.filter((g) => g.target <= PM).map((g) => (
             <g key={g.id}>
               <line x1="0" x2={W} y1={Y(g.target)} y2={Y(g.target)} stroke="var(--color-text)" strokeWidth="1" strokeDasharray="4 4" />
@@ -46,7 +66,15 @@ export function Goals({ vm, t, profileLabel, open, activate }: { vm: VM; t: Stri
           ))}
           <path d={`${line} L${(maxN * st).toFixed(1)},${H} L0,${H} Z`} fill="var(--color-accent-100)" />
           <path d={line} fill="none" stroke="var(--color-accent)" strokeWidth="3" />
+          {hi != null && (
+            <g pointerEvents="none">
+              <line x1={hi * st} x2={hi * st} y1="0" y2={H} stroke="var(--color-text)" strokeWidth="1" />
+              <circle cx={hi * st} cy={Y(proj[hi])} r="7" fill="var(--color-accent)" stroke="var(--color-bg)" strokeWidth="2" />
+            </g>
+          )}
         </svg>
+        </div>
+        <div className="text-xs text-neutral-700">{t.chartHint}</div>
         <div className="flex justify-between text-xs text-neutral-700">{ticks.map((y, i) => <span key={i}>{y}</span>)}</div>
       </div>
 
