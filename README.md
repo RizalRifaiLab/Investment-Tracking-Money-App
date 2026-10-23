@@ -1,6 +1,4 @@
-# Tumbuh
-
-_Formerly "Nilai". Repo, Vercel project and Supabase project keep the old name._
+# Nilai
 
 **Every rupiah, counted toward the goal you set.**
 

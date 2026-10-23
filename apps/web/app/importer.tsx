@@ -15,7 +15,7 @@ const ERR: Record<string, keyof Strings> = {
   tooBig: "errTooBig", read: "errRead", noFile: "errNoFile", unsupported: "errUnsupported",
 };
 
-/** Default target: a Tumbuh account in the same currency whose bank name appears in the statement's account label. */
+/** Default target: a Nilai account in the same currency whose bank name appears in the statement's account label. */
 function guessTarget(label: string, currency: string, accounts: AccountValue[]) {
   const l = label.toLowerCase();
   return accounts.find((a) => a.currency === currency && l.includes(a.bank.toLowerCase()))?.id ?? SKIP;

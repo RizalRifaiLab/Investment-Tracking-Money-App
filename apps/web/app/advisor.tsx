@@ -82,7 +82,7 @@ export function Advisor({ t, lang, userId }: { t: Strings; lang: Lang; userId: s
           {msgs.map((m, i) => (
             <div key={i} className={`flex flex-col gap-1 ${m.role === "user" ? "bg-surface p-3" : "py-1"}`}>
               <div className={`text-[11px] font-extrabold tracking-[0.08em] uppercase ${m.role === "user" ? "text-neutral-700" : "text-accent-700"}`}>
-                {m.role === "user" ? (lang === "id" ? "Kamu" : "You") : (lang === "id" ? "Penasihat Tumbuh" : "Tumbuh advisor")}
+                {m.role === "user" ? (lang === "id" ? "Kamu" : "You") : (lang === "id" ? "Penasihat Nilai" : "Nilai advisor")}
               </div>
               <div className="text-[15px] whitespace-pre-wrap text-pretty">{m.content}</div>
             </div>

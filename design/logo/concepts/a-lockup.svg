@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 486 256" width="486" height="256">
+<title>Nilai</title>
+<path d="M40 200V80M40 140A42 42 0 0 1 124 140V200M184 200V80M244 200V30M388 80V200M448 200V80" fill="none" stroke="#000" stroke-width="36"/>
+<circle cx="346" cy="140" r="42" fill="none" stroke="#000" stroke-width="36"/>
+<rect x="173" y="44" width="22" height="22" fill="#000"/>
+<rect x="423" y="16" width="50" height="50" fill="#000"/>
+</svg>

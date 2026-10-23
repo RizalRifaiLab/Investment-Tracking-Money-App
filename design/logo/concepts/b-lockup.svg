@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 706 256" width="706" height="256">
+<title>Nilai</title>
+<g transform="translate(0 28) scale(0.78)"><rect x="36" y="36" width="26" height="184" fill="#000"/><rect x="88.67" y="36" width="26" height="184" fill="#000"/><rect x="141.33" y="36" width="26" height="184" fill="#000"/><rect x="194" y="36" width="26" height="184" fill="#000"/>
+<polygon points="62,44 62,80 194,212 194,176" fill="#000"/></g>
+<g transform="translate(220 0)"><path d="M40 200V80M40 140A42 42 0 0 1 124 140V200M184 200V80M244 200V30M388 80V200M448 200V80" fill="none" stroke="#000" stroke-width="36"/>
+<circle cx="346" cy="140" r="42" fill="none" stroke="#000" stroke-width="36"/>
+<rect x="166" y="30" width="36" height="36" fill="#000"/>
+<rect x="430" y="30" width="36" height="36" fill="#000"/></g>
+</svg>

@@ -1,4 +1,4 @@
-# Tumbuh (formerly Nilai)
+# Nilai
 
 Personal net-worth and investing tracker for Indonesian users. IDR-first, bilingual EN/ID.
 - Architecture, data model, phases: `ARCHITECTURE.md`. Progress and decisions: `docs/PLAN.md`.

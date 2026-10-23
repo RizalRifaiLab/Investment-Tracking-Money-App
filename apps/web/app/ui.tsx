@@ -82,7 +82,7 @@ export function Modal({ t, title, width = 560, onClose, onSave, onDelete, busy, 
   );
 }
 
-/** Tumbuh wordmark: three rising bars (growth), the tallest in accent. `onAccent` for the red auth panel. */
+/** Nilai wordmark. shortcut: placeholder mark (rising bars) until a logo concept is approved, then swap the SVG. */
 export function Logo({ size = 22, onAccent = false }: { size?: number; onAccent?: boolean }) {
   return (
     <span className="inline-flex items-center gap-2 font-extrabold tracking-[-0.03em] leading-none" style={{ fontSize: size }}>
@@ -91,7 +91,7 @@ export function Logo({ size = 22, onAccent = false }: { size?: number; onAccent?
         <rect x="9" y="8" width="6" height="15" fill="currentColor" />
         <rect x="17" y="1" width="6" height="22" fill={onAccent ? "currentColor" : "var(--color-accent)"} />
       </svg>
-      Tumbuh
+      Nilai
     </span>
   );
 }

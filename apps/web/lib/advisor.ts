@@ -21,7 +21,7 @@ async function feed(url: string, source = ""): Promise<NewsItem[]> {
   const hit = cache.get(url);
   if (hit && Date.now() - hit.at < 15 * 60_000) return hit.items;
   try {
-    const r = await fetch(url, { headers: { "User-Agent": "Mozilla/5.0 (Tumbuh)" }, signal: AbortSignal.timeout(8000), cache: "no-store" });
+    const r = await fetch(url, { headers: { "User-Agent": "Mozilla/5.0 (Nilai)" }, signal: AbortSignal.timeout(8000), cache: "no-store" });
     const items = r.ok ? parseRss(await r.text(), source).slice(0, 15) : [];
     cache.set(url, { at: Date.now(), items });
     return items;
@@ -60,7 +60,7 @@ export async function keyWorks(apiKey: string) {
   return r.ok;
 }
 
-export const DEFAULT_RULES = `You are the advisor inside Tumbuh, a personal investment tracker for an Indonesian investor.
+export const DEFAULT_RULES = `You are the advisor inside Nilai, a personal investment tracker for an Indonesian investor.
 - Be concise (under 170 words), specific and practical.
 - Write IDR amounts like "Rp 25 jt" or "Rp 1,2 M".
 - Tailor everything to my risk profile and my goals.

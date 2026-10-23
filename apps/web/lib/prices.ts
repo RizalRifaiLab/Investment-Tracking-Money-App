@@ -5,7 +5,7 @@ export type Quote = { price: number; currency: string; change_24h: number | null
 
 const TIMEOUT = 10_000;
 const get = (url: string, headers: Record<string, string> = {}) =>
-  fetch(url, { headers: { "User-Agent": "Mozilla/5.0 (Tumbuh)", ...headers }, signal: AbortSignal.timeout(TIMEOUT), cache: "no-store" })
+  fetch(url, { headers: { "User-Agent": "Mozilla/5.0 (Nilai)", ...headers }, signal: AbortSignal.timeout(TIMEOUT), cache: "no-store" })
     .then((r) => (r.ok ? r.json() : Promise.reject(new Error(`${url.split("?")[0]} → ${r.status}`))));
 
 const cgHeaders = (): Record<string, string> => (process.env.COINGECKO_API_KEY ? { "x-cg-demo-api-key": process.env.COINGECKO_API_KEY } : {});
