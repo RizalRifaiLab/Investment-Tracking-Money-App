@@ -5,3 +5,4 @@ export * from './portfolio';
 export * from './statement';
 export * from './review';
 export * from './news';
+export * from './market';

@@ -1,7 +1,7 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { RETURN_PCT, CRYPTO_CAP, type RiskProfile } from "@nilai/core";
 import { admin } from "@/lib/prices";
-import { AiError, DEFAULT_RULES, claude, claudeKeyWorks, decryptKey, deepseek, encryptKey, fetchNews, keyWorks, type ChatMsg } from "@/lib/advisor";
+import { AiError, DEFAULT_RULES, marketCondition, claude, claudeKeyWorks, decryptKey, deepseek, encryptKey, fetchNews, keyWorks, type ChatMsg } from "@/lib/advisor";
 
 export const maxDuration = 120;
 // Users bring their own DeepSeek or Anthropic key. DEEPSEEK_API_KEY on the server is an optional shared fallback, capped per day.
@@ -29,8 +29,8 @@ async function context(db: SupabaseClient) {
   const now = new Date(Date.now() + 7 * 3600_000); // WIB
   const monthStart = now.toISOString().slice(0, 7) + "-01";
   const [p, h, a, g, s, fx, tx] = await Promise.all([
-    db.from("profiles").select("name,language,risk_profile").single(),
-    db.from("holding_values").select("class,name,ticker,quantity,value_idr,change_24h,is_live,deposit_rate,maturity_date"),
+    db.from("profiles").select("name,language,risk_profile,birth_year").single(),
+    db.from("holding_values").select("class,name,ticker,quantity,value_idr,change_24h,is_live,deposit_rate,maturity_date,provider,provider_symbol"),
     db.from("account_values").select("bank,label,currency,balance,value_idr"),
     db.from("goals").select("name,target_idr,is_active"),
     db.from("salary_settings").select("amount,payday,invest_pct").maybeSingle(),
@@ -44,7 +44,9 @@ async function context(db: SupabaseClient) {
   const inn = (tx.data ?? []).filter((x) => x.amount > 0).reduce((x, r) => x + Number(r.amount), 0);
   const cats: Record<string, number> = {};
   for (const x of tx.data ?? []) if (x.amount < 0) cats[x.category] = (cats[x.category] ?? 0) - Number(x.amount);
+  const by = Number(p.data?.birth_year);
   const facts = `Today: ${now.toISOString().slice(0, 10)}. USD/IDR ${Math.round(Number(fx.data?.rate) || 0)}.
+Age: ${by ? now.getUTCFullYear() - by : "unknown (ask me if it matters)"}.
 Risk profile: ${profile} (crypto cap ${CRYPTO_CAP[profile] * 100}%, assumed return ${RETURN_PCT[profile]}%/yr).
 Net worth: ${R(total)}.
 Holdings: ${holdings.map((x) => `${x.name}${x.ticker ? " (" + x.ticker + ")" : ""} [${x.class}] ${R(Number(x.value_idr))} = ${pct(Number(x.value_idr))}${x.is_live ? `, 24h ${Number(x.change_24h).toFixed(1)}%` : ""}${x.deposit_rate ? `, ${x.deposit_rate}% p.a. matures ${x.maturity_date}` : ""}`).join("; ") || "none"}.
@@ -95,7 +97,7 @@ export async function POST(req: Request) {
     context(u.db),
     u.db.from("chat_messages").select("role,content").order("created_at", { ascending: false }).limit(12),
   ]);
-  const news = await fetchNews(holdings);
+  const [news, market] = await Promise.all([fetchNews(holdings), marketCondition(holdings)]);
   const system = `${st?.rules ?? DEFAULT_RULES}
 
 Always reply in ${lang === "id" ? "Bahasa Indonesia" : "English"}.
@@ -103,6 +105,9 @@ For news, use only the headlines below: name the source and date, never invent n
 
 MY DATA
 ${facts}
+
+MARKET CONDITION (daily closes, same markets as the TradingView charts)
+${market || "unavailable right now"}
 
 HEADLINES (newest first)
 ${news.map((n) => `- ${n.date.slice(0, 10)} ${n.source}: ${n.title}`).join("\n") || "none available"}`;

@@ -71,8 +71,8 @@ export function Advisor({ t, lang, userId }: { t: Strings; lang: Lang; userId: s
   const hint = isClaude ? st?.claudeKeyHint : st?.keyHint;
 
   const quick = lang === "id"
-    ? [t.q5, "Gajiku bulan ini sebaiknya ke mana?", "Apakah aku on track ke target aktifku?", "Investasi terbaik jangka panjang untukku?"]
-    : [t.q5, "Where should this month’s salary go?", "Am I on track for my active goal?", "Best long-term investment for me?"];
+    ? [t.qReview, t.qMarket, t.qBooks, t.q5, "Gajiku bulan ini sebaiknya ke mana?", "Apakah aku on track ke target aktifku?", "Investasi terbaik jangka panjang untukku?"]
+    : [t.qReview, t.qMarket, t.qBooks, t.q5, "Where should this month’s salary go?", "Am I on track for my active goal?", "Best long-term investment for me?"];
   const fmtDate = (d: string) => (d ? new Date(d).toLocaleDateString(lang === "id" ? "id-ID" : "en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }) : "");
 
   return (

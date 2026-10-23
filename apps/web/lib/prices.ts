@@ -53,6 +53,18 @@ export async function yahoo(symbols: string[]): Promise<Record<string, Quote>> {
   return out;
 }
 
+/** One year of daily closes per Yahoo symbol, oldest first. Failed symbols are left out. */
+export async function yahooHistory(symbols: string[]): Promise<Record<string, number[]>> {
+  const out: Record<string, number[]> = {};
+  await Promise.all(symbols.map(async (s) => {
+    try {
+      const r = (await get(`https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(s)}?range=1y&interval=1d`)).chart.result[0];
+      out[s] = r.indicators.quote[0].close.filter((x: number | null) => x !== null);
+    } catch { /* skip */ }
+  }));
+  return out;
+}
+
 export async function usdIdr(): Promise<number | null> {
   const r = await get("https://open.er-api.com/v6/latest/USD");
   return r?.rates?.IDR > 0 ? r.rates.IDR : null;

@@ -15,7 +15,7 @@ import { Dashboard, Holdings, viewModel, type Open } from "./portfolio";
 import { profileLabel, Settings } from "./settings";
 import { Logo, Segmented } from "./ui";
 
-export type Profile = { user_id: string; name: string; currency: "IDR" | "USD"; language: Lang; risk_profile: RiskProfile };
+export type Profile = { user_id: string; name: string; currency: "IDR" | "USD"; language: Lang; risk_profile: RiskProfile; birth_year: number | null };
 
 const TABS = ["home", "holdings", "cash", "goals", "markets", "advisor", "settings"] as const;
 type Tab = (typeof TABS)[number];

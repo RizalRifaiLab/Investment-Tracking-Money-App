@@ -19,6 +19,13 @@ export function Settings({ t, lang, setLang, email, profile, setProfile, data, r
 }) {
   const [modal, setModal] = useState<"pin" | "salary" | null>(null);
   const [msg, setMsg] = useState("");
+  const [year, setYear] = useState(profile.birth_year ? String(profile.birth_year) : "");
+  const saveYear = () => {
+    const y = Number(year);
+    if (!year) return update({ birth_year: null });
+    if (!Number.isInteger(y) || y < 1900 || y > new Date().getFullYear()) return setMsg(t.errBirthYear);
+    setMsg(""); update({ birth_year: y });
+  };
   const update = (p: Partial<Profile>) => {
     setProfile({ ...profile, ...p });
     supabase.from("profiles").update(p).eq("user_id", profile.user_id).then(({ error }) => error && setMsg(error.message));
@@ -33,6 +40,8 @@ export function Settings({ t, lang, setLang, email, profile, setProfile, data, r
         <div className={kicker}>{t.account}</div>
         <div className="text-[22px] font-extrabold">{profile.name}</div>
         <div className="text-sm text-neutral-800">{email} · PIN ••••••</div>
+        <Field label={t.birthYear} inputMode="numeric" maxLength={4} placeholder="1995" value={year}
+          onChange={(e) => setYear(e.target.value.replace(/\D/g, ""))} onBlur={saveYear} />
         <div className="flex gap-2 mt-2 flex-wrap">
           <button className={btnOutline} onClick={lock}>{t.lock}</button>
           <button className={btnOutline} onClick={() => { setMsg(""); setModal("pin"); }}>{t.changePin}</button>

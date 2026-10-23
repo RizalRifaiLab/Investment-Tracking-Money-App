@@ -1,6 +1,7 @@
 import { createCipheriv, createDecipheriv, randomBytes } from "node:crypto";
 import Anthropic from "@anthropic-ai/sdk";
-import { newsQueries, parseRss, type AssetClass, type NewsItem } from "@nilai/core";
+import { newsQueries, parseRss, trendLine, trendOf, type AssetClass, type NewsItem } from "@nilai/core";
+import { yahooHistory } from "./prices";
 
 // ---------- own API keys: AES-256-GCM with a server secret (AI_KEY_SECRET, 64 hex chars) ----------
 const secret = () => Buffer.from(process.env.AI_KEY_SECRET ?? "", "hex");
@@ -36,6 +37,23 @@ export async function fetchNews(holdings: { class: AssetClass; name: string; tic
   const seen = new Set<string>();
   return lists.flat().filter((n) => !seen.has(n.title) && seen.add(n.title))
     .sort((a, b) => b.date.localeCompare(a.date)).slice(0, 30);
+}
+
+// ---------- market condition: the markets on the TradingView tab, read from Yahoo daily closes, cached 15 min ----------
+const MARKETS: [string, string][] = [["^JKSE", "IHSG (IDX Composite)"], ["^GSPC", "S&P 500"], ["^IXIC", "Nasdaq"], ["GC=F", "Gold (USD/oz)"], ["BTC-USD", "Bitcoin (USD)"], ["IDR=X", "USD/IDR"]];
+let marketCache: { at: number; key: string; text: string } | null = null;
+export async function marketCondition(holdings: { provider: string | null; provider_symbol: string | null; class: AssetClass; ticker: string; name: string }[]): Promise<string> {
+  // holdings priced by Yahoo use their own symbol; crypto majors trade on Yahoo as TICKER-USD
+  const own: [string, string][] = holdings.flatMap((h): [string, string][] =>
+    h.provider === "yahoo" && h.provider_symbol ? [[h.provider_symbol, h.name]]
+    : h.class === "Crypto" && h.ticker && !/^USD/.test(h.ticker) ? [[`${h.ticker.toUpperCase()}-USD`, h.name]] : []);
+  const list = [...MARKETS, ...own].filter(([s], i, a) => a.findIndex(([x]) => x === s) === i);
+  const key = list.map(([s]) => s).join();
+  if (marketCache && marketCache.key === key && Date.now() - marketCache.at < 15 * 60_000) return marketCache.text;
+  const hist = await yahooHistory(list.map(([s]) => s));
+  const text = list.flatMap(([s, name]) => { const t = hist[s] && trendOf(hist[s]); return t ? [trendLine(name, t)] : []; }).join("\n");
+  marketCache = { at: Date.now(), key, text };
+  return text;
 }
 
 // ---------- DeepSeek (OpenAI-compatible chat completions) ----------
@@ -93,7 +111,9 @@ export async function claudeKeyWorks(apiKey: string) {
 export const DEFAULT_RULES = `You are the advisor inside Nilai, a personal investment tracker for an Indonesian investor.
 - Be concise (under 170 words), specific and practical.
 - Write IDR amounts like "Rp 25 jt" or "Rp 1,2 M".
-- Tailor everything to my risk profile and my goals.
+- Tailor everything to my age, risk profile and goals. When asked to review my portfolio, check each holding against my age and time horizon (e.g. how much should sit in growth assets vs. safe ones), name what is over- or under-weight and what to change.
+- When asked about the market, read the MARKET CONDITION trends (returns, position vs. 50/200-day averages) and say plainly whether each market is in an uptrend, downtrend or sideways, and what that means for my holdings. No price predictions.
+- When asked what to read, recommend 3–5 real, well-known books that fit my age and situation, one line each on why.
 - Favour long-term, diversified, low-cost choices available to Indonesians: IDX stocks, reksa dana, SBN/ORI/SBR, deposito, gold, US ETFs via brokers, crypto via OJK-registered exchanges.
 - Plain text, no markdown headings; short dashed lines are fine.
 - End trade suggestions with a one-line reminder that this is not licensed financial advice.`;
