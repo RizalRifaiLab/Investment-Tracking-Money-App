@@ -5,6 +5,7 @@ import type { RiskProfile } from "@nilai/core";
 import { api } from "@/lib/api";
 import { supabase } from "@/lib/supabase";
 import type { Lang, Strings } from "@/lib/i18n";
+import { Advisor } from "./advisor";
 import { CashFlow } from "./cashflow";
 import { useData, type Goal } from "./data";
 import { BankModal, GoalModal, HoldingModal } from "./modals";
@@ -101,12 +102,7 @@ export default function Shell({ t, lang, setLang, email, profile, setProfile, lo
       {vm && tab === "goals" && <Goals vm={vm} t={t} profileLabel={profileLabel(t, profile.risk_profile)} open={setModal} activate={activate} />}
       {data && tab === "markets" && <Markets data={data} t={t} lang={lang} refresh={refresh} refreshing={refreshing} />}
       {data && tab === "settings" && <Settings t={t} lang={lang} setLang={setLang} email={email} profile={profile} setProfile={setProfile} data={data} reload={reload} lock={lock} logout={logout} />}
-      {tab === "advisor" && (
-        <main className="px-4 py-5 wide:p-8">
-          <div className="text-xs font-extrabold uppercase tracking-[0.08em]">{t.advisor}</div>
-          <div className="text-[32px] font-extrabold tracking-[-0.02em] mt-2">{t.comingSoon}</div>
-        </main>
-      )}
+      {tab === "advisor" && <Advisor t={t} lang={lang} userId={profile.user_id} />}
     </div>
   );
 }
