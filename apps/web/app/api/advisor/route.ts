@@ -1,7 +1,7 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { RETURN_PCT, CRYPTO_CAP, type RiskProfile } from "@nilai/core";
 import { admin } from "@/lib/prices";
-import { AiError, DEFAULT_RULES, marketCondition, claude, claudeKeyWorks, decryptKey, deepseek, encryptKey, fetchNews, keyWorks, type ChatMsg } from "@/lib/advisor";
+import { AiError, DEFAULT_RULES, marketCondition, claudeKeyWorks, encryptKey, fetchNews, keyWorks, userAi, type ChatMsg } from "@/lib/advisor";
 
 export const maxDuration = 120;
 // Users bring their own DeepSeek or Anthropic key. DEEPSEEK_API_KEY on the server is an optional shared fallback, capped per day.
@@ -17,11 +17,6 @@ async function asUser(req: Request) {
     auth: { persistSession: false }, global: { headers: { Authorization: `Bearer ${token}` } },
   });
   return { user, db };
-}
-
-async function settingsOf(userId: string) {
-  const { data } = await admin().from("advisor_settings").select("rules,model,provider,api_key_enc,key_hint,claude_key_enc,claude_key_hint").eq("user_id", userId).maybeSingle();
-  return data;
 }
 
 /** Everything the advisor may know, read as the user. */
@@ -62,7 +57,7 @@ export async function GET(req: Request) {
   const u = await asUser(req);
   if (!u) return Response.json({ error: "unauthorized" }, { status: 401 });
   const [st, msgs, hs] = await Promise.all([
-    settingsOf(u.user.id),
+    userAi(u.user.id).then((x) => x.st),
     u.db.from("chat_messages").select("role,content,created_at").order("created_at", { ascending: false }).limit(40),
     u.db.from("holdings").select("class,name,ticker"),
   ]);
@@ -81,11 +76,7 @@ export async function POST(req: Request) {
   const { message } = await req.json().catch(() => ({}));
   if (typeof message !== "string" || !message.trim() || message.length > 2000) return Response.json({ error: "bad message" }, { status: 400 });
 
-  const st = await settingsOf(u.user.id);
-  const useClaude = st?.provider === "claude";
-  const enc = useClaude ? st?.claude_key_enc : st?.api_key_enc;
-  const ownKey = enc ? decryptKey(enc) : null;
-  const apiKey = useClaude ? ownKey : ownKey ?? process.env.DEEPSEEK_API_KEY; // the shared fallback is DeepSeek only
+  const { st, ownKey, apiKey, ask } = await userAi(u.user.id);
   if (!apiKey) return Response.json({ code: "nokey" }, { status: 503 });
   if (!ownKey) {
     const since = new Date(); since.setUTCHours(-7, 0, 0, 0); // since 00:00 WIB
@@ -115,7 +106,7 @@ ${news.map((n) => `- ${n.date.slice(0, 10)} ${n.source}: ${n.title}`).join("\n")
     ...((history.data ?? []).reverse() as ChatMsg[]), { role: "user", content: message.trim() }];
 
   try {
-    const reply = useClaude ? await claude(apiKey, messages) : await deepseek(apiKey, ownKey ? st!.model : "deepseek-flash", messages);
+    const reply = await ask(messages);
     await admin().from("chat_messages").insert([
       { user_id: u.user.id, role: "user", content: message.trim() },
       { user_id: u.user.id, role: "assistant", content: reply },

@@ -11,13 +11,14 @@ import { useData, type Goal } from "./data";
 import { BankModal, GoalModal, HoldingModal } from "./modals";
 import { Goals } from "./goals";
 import { Markets } from "./markets";
+import { PaperLab } from "./lab";
 import { Dashboard, Holdings, viewModel, type Open } from "./portfolio";
 import { profileLabel, Settings } from "./settings";
 import { Logo, Segmented } from "./ui";
 
 export type Profile = { user_id: string; name: string; currency: "IDR" | "USD"; language: Lang; risk_profile: RiskProfile; birth_year: number | null };
 
-const TABS = ["home", "holdings", "cash", "goals", "markets", "advisor", "settings"] as const;
+const TABS = ["home", "holdings", "cash", "goals", "markets", "advisor", "lab", "settings"] as const;
 type Tab = (typeof TABS)[number];
 
 type Props = {
@@ -103,6 +104,7 @@ export default function Shell({ t, lang, setLang, email, profile, setProfile, lo
       {data && tab === "markets" && <Markets data={data} t={t} lang={lang} refresh={refresh} refreshing={refreshing} />}
       {data && tab === "settings" && <Settings t={t} lang={lang} setLang={setLang} email={email} profile={profile} setProfile={setProfile} data={data} reload={reload} lock={lock} logout={logout} />}
       {tab === "advisor" && <Advisor t={t} lang={lang} userId={profile.user_id} />}
+      {tab === "lab" && <PaperLab t={t} lang={lang} />}
     </div>
   );
 }

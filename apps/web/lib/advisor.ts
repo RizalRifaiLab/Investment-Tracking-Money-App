@@ -1,7 +1,7 @@
 import { createCipheriv, createDecipheriv, randomBytes } from "node:crypto";
 import Anthropic from "@anthropic-ai/sdk";
 import { newsQueries, parseRss, trendLine, trendOf, type AssetClass, type NewsItem } from "@nilai/core";
-import { yahooHistory } from "./prices";
+import { admin, yahooHistory } from "./prices";
 
 // ---------- own API keys: AES-256-GCM with a server secret (AI_KEY_SECRET, 64 hex chars) ----------
 const secret = () => Buffer.from(process.env.AI_KEY_SECRET ?? "", "hex");
@@ -41,18 +41,24 @@ export async function fetchNews(holdings: { class: AssetClass; name: string; tic
 
 // ---------- market condition: the markets on the TradingView tab, read from Yahoo daily closes, cached 15 min ----------
 const MARKETS: [string, string][] = [["^JKSE", "IHSG (IDX Composite)"], ["^GSPC", "S&P 500"], ["^IXIC", "Nasdaq"], ["GC=F", "Gold (USD/oz)"], ["BTC-USD", "Bitcoin (USD)"], ["ETH-USD", "Ethereum (USD)"], ["SOL-USD", "Solana (USD)"], ["BNB-USD", "BNB (USD)"], ["XRP-USD", "XRP (USD)"], ["IDR=X", "USD/IDR"]];
-let marketCache: { at: number; key: string; text: string } | null = null;
+const marketCache = new Map<string, { at: number; text: string }>();
 export async function marketCondition(holdings: { provider: string | null; provider_symbol: string | null; class: AssetClass; ticker: string; name: string }[]): Promise<string> {
   // holdings priced by Yahoo use their own symbol; crypto majors trade on Yahoo as TICKER-USD
   const own: [string, string][] = holdings.flatMap((h): [string, string][] =>
     h.provider === "yahoo" && h.provider_symbol ? [[h.provider_symbol, h.name]]
     : h.class === "Crypto" && h.ticker && !/^USD/.test(h.ticker) ? [[`${h.ticker.toUpperCase()}-USD`, h.name]] : []);
-  const list = [...MARKETS, ...own].filter(([s], i, a) => a.findIndex(([x]) => x === s) === i);
+  return trendText([...MARKETS, ...own]);
+}
+
+/** One trend line per [Yahoo symbol, name]; the same list is cached 15 min. */
+export async function trendText(markets: [string, string][]): Promise<string> {
+  const list = markets.filter(([s], i, a) => a.findIndex(([x]) => x === s) === i);
   const key = list.map(([s]) => s).join();
-  if (marketCache && marketCache.key === key && Date.now() - marketCache.at < 15 * 60_000) return marketCache.text;
+  const hit = marketCache.get(key);
+  if (hit && Date.now() - hit.at < 15 * 60_000) return hit.text;
   const hist = await yahooHistory(list.map(([s]) => s));
   const text = list.flatMap(([s, name]) => { const t = hist[s] && trendOf(hist[s]); return t ? [trendLine(name, t)] : []; }).join("\n");
-  marketCache = { at: Date.now(), key, text };
+  marketCache.set(key, { at: Date.now(), text });
   return text;
 }
 
@@ -106,6 +112,17 @@ export async function claude(apiKey: string, messages: ChatMsg[]): Promise<strin
 export async function claudeKeyWorks(apiKey: string) {
   try { await new Anthropic({ apiKey, timeout: 10_000, maxRetries: 0 }).models.retrieve(CLAUDE_MODEL); return true; }
   catch { return false; }
+}
+
+/** The user's chosen provider and key. The shared DEEPSEEK_API_KEY fallback applies to DeepSeek only. */
+export async function userAi(userId: string) {
+  const { data: st } = await admin().from("advisor_settings").select("rules,model,provider,api_key_enc,key_hint,claude_key_enc,claude_key_hint").eq("user_id", userId).maybeSingle();
+  const useClaude = st?.provider === "claude";
+  const enc = useClaude ? st?.claude_key_enc : st?.api_key_enc;
+  const ownKey = enc ? decryptKey(enc) : null;
+  const apiKey = useClaude ? ownKey : ownKey ?? process.env.DEEPSEEK_API_KEY ?? null;
+  const ask = (messages: ChatMsg[]) => (useClaude ? claude(apiKey!, messages) : deepseek(apiKey!, ownKey ? st!.model : "deepseek-flash", messages));
+  return { st, ownKey, apiKey, ask };
 }
 
 export const DEFAULT_RULES = `You are the advisor inside Nilai, a personal investment tracker for an Indonesian investor.

@@ -6,3 +6,4 @@ export * from './statement';
 export * from './review';
 export * from './news';
 export * from './market';
+export * from './paper';
