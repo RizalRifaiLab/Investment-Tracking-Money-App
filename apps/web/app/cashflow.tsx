@@ -13,6 +13,8 @@ type Txn = { id: string; account_id: string; date: string; description: string; 
 
 const ym = (d: Date) => d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0");
 const todayIso = () => { const d = new Date(); return ym(d) + "-" + String(d.getDate()).padStart(2, "0"); };
+// Allocation colours from the design spec, in fixed order (largest category first).
+const SLICE_COLORS = ["--color-accent", "--color-neutral-900", "--color-neutral-700", "--color-accent-300", "--color-neutral-500", "--color-accent-700"];
 const cellShadow = "shadow-[2px_0_0_var(--color-text),0_2px_0_var(--color-text),2px_2px_0_var(--color-text)]";
 
 export function CashFlow({ data, t, cur, loc, open, reload }: { data: Data; t: Strings; cur: Currency; loc: string; open: Open; reload: () => void }) {
@@ -21,7 +23,6 @@ export function CashFlow({ data, t, cur, loc, open, reload }: { data: Data; t: S
   const [txns, setTxns] = useState<Txn[]>([]);
   const [salaryTx, setSalaryTx] = useState<string | null>(null); // date of this month's Salary txn
   const [modal, setModal] = useState<"txn" | "salary" | "import" | null>(null);
-  const [months, setMonths] = useState<string[]>([]); // months that have any transaction, newest first
   const [history, setHistory] = useState<Txn[]>([]); // the two months before, for trends
   const [err, setErr] = useState("");
 
@@ -32,13 +33,11 @@ export function CashFlow({ data, t, cur, loc, open, reload }: { data: Data; t: S
     Promise.all([
       supabase.from("transactions").select("id,account_id,date,description,amount,category,source").gte("date", month + "-01").lt("date", end).order("date", { ascending: false }).order("created_at", { ascending: false }),
       supabase.from("transactions").select("date").eq("category", "Salary").gte("date", nowStart).order("date").limit(1).maybeSingle(),
-      supabase.from("transactions").select("date"),
       supabase.from("transactions").select("id,account_id,date,description,amount,category,source").gte("date", ym(new Date(y, m - 3, 1)) + "-01").lt("date", month + "-01"),
-    ]).then(([tx, sal, all, prev]) => {
+    ]).then(([tx, sal, prev]) => {
       if (tx.error) return setErr(tx.error.message);
       setTxns(tx.data);
       setSalaryTx(sal.data?.date ?? null);
-      setMonths([...new Set((all.data ?? []).map((x) => x.date.slice(0, 7)))].sort().reverse());
       setHistory(prev.data ?? []);
     });
   }, [month]);
@@ -52,7 +51,10 @@ export function CashFlow({ data, t, cur, loc, open, reload }: { data: Data; t: S
   const mOut = -txns.filter((x) => x.amount < 0).reduce((s, x) => s + toIdr(x), 0);
   const outs: Record<string, number> = {};
   for (const x of txns) if (x.amount < 0) outs[x.category] = (outs[x.category] ?? 0) - toIdr(x);
-  const outMax = Math.max(1, ...Object.values(outs));
+  // Donut: top 5 categories, the rest folded into one slice so it stays readable.
+  const sorted = Object.entries(outs).sort((a, b) => b[1] - a[1]);
+  const slices = sorted.length > 6 ? [...sorted.slice(0, 5), [t.rest, sorted.slice(5).reduce((s, [, v]) => s + v, 0)] as [string, number]] : sorted;
+  const spent = slices.reduce((s, [, v]) => s + v, 0);
   const cash = data.accounts.reduce((s, a) => s + Number(a.value_idr), 0);
 
   const sal = data.salary;
@@ -86,6 +88,7 @@ export function CashFlow({ data, t, cur, loc, open, reload }: { data: Data; t: S
     review.net > 0 ? { k: t.rvActK, title: fill(t.rvSurplus, { net: S(review.net) }), body: fill(t.rvSurplusBody, { rate: formatPct(review.savingsRate ?? 0) }) }
       : review.cut ? { k: t.rvActK, title: fill(t.rvCut, { cat: review.cut.cat, save: S(review.cut.save) }), body: t.rvCutBody } : null,
   ].filter((x): x is { k: string; title: string; body: string } => !!x);
+  const thisMonth = ym(new Date());
   const shift = (d: number) => { const [y, m] = month.split("-").map(Number); setMonth(ym(new Date(y, m - 1 + d, 1))); };
   const pad = "px-4 py-5 wide:p-8";
   const row = (label: string, value: string) => <div className="flex justify-between gap-3"><span>{label}</span><b className="text-right">{value}</b></div>;
@@ -121,7 +124,7 @@ export function CashFlow({ data, t, cur, loc, open, reload }: { data: Data; t: S
             <div className={kicker}>{new Date(month + "-01T00:00:00").toLocaleDateString(loc, { month: "long", year: "numeric" })}</div>
             <div className="flex gap-1">
               <button onClick={() => shift(-1)} aria-label="Previous month" className="w-11 h-9 border-2 border-text font-extrabold cursor-pointer">←</button>
-              <button onClick={() => shift(1)} aria-label="Next month" className="w-11 h-9 border-2 border-text font-extrabold cursor-pointer">→</button>
+              <button onClick={() => shift(1)} aria-label="Next month" disabled={month >= thisMonth} className="w-11 h-9 border-2 border-text font-extrabold cursor-pointer disabled:opacity-30 disabled:cursor-default">→</button>
             </div>
           </div>
           <div className="grid grid-cols-3 gap-4">
@@ -129,24 +132,43 @@ export function CashFlow({ data, t, cur, loc, open, reload }: { data: Data; t: S
             <div><div className="text-xs text-neutral-800">{t.moneyOut}</div><div className="text-[22px] wide:text-[26px] font-extrabold tracking-[-0.02em] text-accent-700">{S(mOut)}</div></div>
             <div><div className="text-xs text-neutral-800">{t.net}</div><div className="text-[22px] wide:text-[26px] font-extrabold tracking-[-0.02em]">{(mIn - mOut >= 0 ? "+" : "") + S(mIn - mOut)}</div></div>
           </div>
-          {months.length > 0 && (
-            <div className="flex gap-1.5 overflow-x-auto" aria-label={t.monthsData}>
-              {months.map((m) => (
-                <button key={m} onClick={() => setMonth(m)} aria-pressed={m === month}
-                  className={`shrink-0 text-xs font-extrabold px-2.5 py-1.5 border-2 border-text cursor-pointer ${m === month ? "bg-text text-bg" : ""}`}>
-                  {new Date(m + "-01T00:00:00").toLocaleDateString(loc, { month: "short", year: "2-digit" })}
-                </button>
-              ))}
-            </div>
-          )}
-          <div className={kicker}>{t.spendingBy}</div>
-          <div className="flex flex-col gap-2">
-            {Object.entries(outs).sort((a, b) => b[1] - a[1]).map(([k, v]) => (
-              <div key={k} className="grid grid-cols-[90px_1fr_90px] wide:grid-cols-[110px_1fr_100px] gap-3 items-center text-[13px]">
-                <span>{k}</span><div className="h-3 bg-neutral-200"><div className="h-full bg-text" style={{ width: (v / outMax) * 100 + "%" }} /></div><span className="text-right font-extrabold">{S(v)}</span>
+          {!txns.length ? (
+            <div className="flex flex-col gap-3 border-2 border-dashed border-text p-5">
+              <div className="text-sm text-neutral-800">{t.noDataMonth}</div>
+              <div className="flex gap-2 flex-wrap">
+                <button className={btnOutline} onClick={() => setModal("import")} disabled={!data.accounts.length}>{t.import}</button>
+                <button className={btnOutline} onClick={() => setModal("txn")} disabled={!data.accounts.length}>{t.logTxn}</button>
               </div>
-            ))}
-          </div>
+            </div>
+          ) : spent > 0 && (
+            <>
+              <div className={kicker}>{t.spendingBy}</div>
+              <div className="flex flex-col wide:flex-row gap-6 items-center wide:items-start">
+                <svg viewBox="0 0 160 160" className="w-44 shrink-0 -rotate-90" role="img" aria-label={t.spendingBy}>
+                  {slices.reduce<{ el: React.ReactNode[]; at: number }>((acc, [k, v], i) => {
+                    const C = 2 * Math.PI * 56, len = (v / spent) * C;
+                    acc.el.push(
+                      <circle key={k} cx="80" cy="80" r="56" fill="none" stroke={`var(${SLICE_COLORS[i]})`} strokeWidth="28"
+                        strokeDasharray={`${Math.max(0, len - (slices.length > 1 ? 2 : 0))} ${C}`} strokeDashoffset={-acc.at}>
+                        <title>{`${k}: ${S(v)} (${formatPct(v / spent)})`}</title>
+                      </circle>);
+                    acc.at += len;
+                    return acc;
+                  }, { el: [], at: 0 }).el}
+                </svg>
+                <ul className="flex flex-col gap-2 w-full text-[13px]">
+                  {slices.map(([k, v], i) => (
+                    <li key={k} className="grid grid-cols-[12px_1fr_auto_auto] gap-2.5 items-center">
+                      <span className="size-3" style={{ background: `var(${SLICE_COLORS[i]})` }} />
+                      <span>{k}</span>
+                      <span className="text-neutral-700">{formatPct(v / spent)}</span>
+                      <b className="text-right min-w-20">{S(v)}</b>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </>
+          )}
         </div>
         <div className={`bg-bg ${pad} flex flex-col gap-3`}>
           <div className={kicker}>{t.salary}</div>
