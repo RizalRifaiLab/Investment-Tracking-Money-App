@@ -78,6 +78,7 @@ export function Advisor({ t, lang, userId }: { t: Strings; lang: Lang; userId: s
         <div className={`${kicker} text-accent-700`}>{t.advisor}</div>
         <div className="flex flex-col gap-3">
           {!msgs.length && <div className="text-[15px] text-neutral-800 text-pretty">{t.chatIntro}</div>}
+          {st && !st.keyHint && <div className="text-sm font-extrabold text-accent-700">{t.errNoKey}</div>}
           {msgs.map((m, i) => (
             <div key={i} className={`flex flex-col gap-1 ${m.role === "user" ? "bg-surface p-3" : "py-1"}`}>
               <div className={`text-[11px] font-extrabold tracking-[0.08em] uppercase ${m.role === "user" ? "text-neutral-700" : "text-accent-700"}`}>
@@ -116,7 +117,7 @@ export function Advisor({ t, lang, userId }: { t: Strings; lang: Lang; userId: s
         </ul>
 
         {st && (
-          <details className="px-6 py-5 border-t-2 border-text">
+          <details className="px-6 py-5 border-t-2 border-text" open={!st.keyHint}>
             <summary className={`${kicker} cursor-pointer`}>{t.advSettings}</summary>
             <div className="flex flex-col gap-4 mt-4">
               <label className="flex flex-col gap-1.5">

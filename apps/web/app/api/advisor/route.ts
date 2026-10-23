@@ -4,7 +4,8 @@ import { admin } from "@/lib/prices";
 import { AiError, DEFAULT_RULES, decryptKey, deepseek, encryptKey, fetchNews, keyWorks, type ChatMsg } from "@/lib/advisor";
 
 export const maxDuration = 120;
-const APP_KEY_DAILY_LIMIT = 30; // messages per user per day on the shared key (ARCHITECTURE.md §4)
+// Users bring their own DeepSeek key. DEEPSEEK_API_KEY on the server is an optional shared fallback, capped per day.
+const APP_KEY_DAILY_LIMIT = 30;
 const R = (v: number) => "Rp " + Math.round(v).toLocaleString("id-ID");
 
 /** The signed-in user plus a Supabase client that acts as them (RLS applies). */

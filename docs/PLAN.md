@@ -74,6 +74,6 @@ Modals: Holding (class chips, IDR/USD chips, fields vary by class; Deposito = ba
   and an action (invest the surplus / cut the largest flexible category by 20%).
 - [x] Advisor: DeepSeek (`deepseek-flash`, or `deepseek-v4-pro` with an own key) via `/api/advisor`. Context = holdings, cash,
   goals, salary, this month's cash flow + headlines (Google News incl. Bloomberg, Cointelegraph; matched to holdings, cached 15 min).
-  Users can edit the rules (prompt) and add their own DeepSeek key (AES-256-GCM, server-only column). Shared key: 30 messages/day.
+  Each user adds their own DeepSeek key (AES-256-GCM, server-only column); optional server DEEPSEEK_API_KEY fallback, 30/day. Rules (prompt) editable.
   X/Twitter is not crawled (blocked, paid API); Bloomberg articles are paywalled, only headlines are used.
 - [ ] Google sign-in, PWA manifest
