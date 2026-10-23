@@ -66,8 +66,18 @@ HEADLINES (newest first)
 ${news.map((n) => `- ${n.date.slice(0, 10)} ${n.source}: ${n.title}`).join("\n") || "none"}`;
 
   let parsed;
-  try { parsed = parseOrders(await ai.ask([{ role: "system", content: system }, { role: "user", content: user }])); }
-  catch (e) { return e instanceof AiError ? { code: e.code, error: e.message } : { code: "badreply" }; }
+  for (let attempt = 1; !parsed; attempt++) {
+    let reply = "";
+    try {
+      reply = await ai.ask([{ role: "system", content: system }, { role: "user", content: user }], true);
+      parsed = parseOrders(reply);
+    } catch (e) {
+      if (e instanceof AiError) return { code: e.code, error: e.message };
+      if (!(e instanceof SyntaxError)) return { error: (e as Error).message }; // timeout, network: show the real cause
+      console.error("paper lab: unreadable AI reply", attempt, reply.slice(0, 300));
+      if (attempt === 2) return { code: "badreply" };
+    }
+  }
 
   const r = fillOrders(cash, pos, parsed.orders, idr);
   if (r.fills.length) {
