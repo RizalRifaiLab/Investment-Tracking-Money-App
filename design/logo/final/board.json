@@ -1,0 +1,24 @@
+{
+  "brand": "Nilai",
+  "tagline": "Every rupiah counts",
+  "brief": "An IDR-first net-worth and investing tracker for Indonesian users. It should feel calm, honest and precise: a tool for counting, not a trading casino.",
+  "adjectives": ["calm", "precise", "honest", "local"],
+  "criteria": "Distinct from blue fintech marks and upward arrows, readable at 16 px, works in one colour, ties to 'every rupiah counts'.",
+  "industry": "fintech",
+  "nav": ["Dashboard", "Cash flow", "Advisor"],
+  "brand_color": "#ec3013",
+  "greyscale": false,
+  "designer": "Nilai",
+  "round": 2,
+  "concepts": [
+    {
+      "name": "Growing dots",
+      "symbol": "nilai-symbol.svg",
+      "lockup": "nilai-wordmark.svg",
+      "idea": "The second i-dot is bigger than the first: small amounts become value.",
+      "rationale": ["The promise lives inside the name itself", "One accent detail: the big dot is the only red", "The two i's become the app icon and favicon"]
+    }
+  ],
+  "recommendation": "Growing dots: the wordmark is the logo, the two i's are the icon.",
+  "next_steps": ["Trademark search for the name and mark", "Use the web icon set in the app", "Apply the clear-space and minimum-size rules"]
+}

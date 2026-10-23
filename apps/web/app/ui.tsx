@@ -82,16 +82,12 @@ export function Modal({ t, title, width = 560, onClose, onSave, onDelete, busy, 
   );
 }
 
-/** Nilai wordmark. shortcut: placeholder mark (rising bars) until a logo concept is approved, then swap the SVG. */
+/** Nilai wordmark (design/logo/final): the second i-dot grows, small amounts become value. */
 export function Logo({ size = 22, onAccent = false }: { size?: number; onAccent?: boolean }) {
   return (
-    <span className="inline-flex items-center gap-2 font-extrabold tracking-[-0.03em] leading-none" style={{ fontSize: size }}>
-      <svg viewBox="0 0 24 24" width={size} height={size} aria-hidden="true">
-        <rect x="1" y="14" width="6" height="9" fill="currentColor" />
-        <rect x="9" y="8" width="6" height="15" fill="currentColor" />
-        <rect x="17" y="1" width="6" height="22" fill={onAccent ? "currentColor" : "var(--color-accent)"} />
-      </svg>
-      Nilai
-    </span>
+    <svg viewBox="22 16 451 184" height={size * 1.1} role="img" aria-label="Nilai" className="block">
+      <path fill="currentColor" d="M22 80H58V200H22ZM22 140A60 60 0 0 1 142 140V200H106V140A24 24 0 0 0 58 140ZM166 80H202V200H166ZM226 30H262V200H226ZM370 80H406V200H370ZM430 80H466V200H430ZM286 140A60 60 0 1 1 406 140A60 60 0 1 1 286 140ZM322 140A24 24 0 1 0 370 140A24 24 0 1 0 322 140ZM173 44h22v22h-22Z" />
+      <path fill={onAccent ? "currentColor" : "var(--color-accent)"} d="M423 16h50v50h-50Z" />
+    </svg>
   );
 }
