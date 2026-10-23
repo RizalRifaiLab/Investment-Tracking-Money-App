@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { T, type Lang } from "@/lib/i18n";
-import Auth, { resetPending, type AuthStep } from "./auth";
+import Auth, { resetPending, storedEmail, type AuthStep } from "./auth";
 import Shell, { type Profile } from "./shell";
 
 const AUTO_LOCK_MS = 5 * 60 * 1000;
@@ -33,7 +33,7 @@ export default function App() {
   useEffect(() => {
     supabase.auth.getSession().then(async ({ data }) => {
       setLangState(storedLang());
-      if (!data.session) return setStep("signup");
+      if (!data.session) { setEmail(storedEmail()); return setStep("signup"); }
       setEmail(data.session.user.email ?? "");
       const [{ data: hasPin }, { data: p }] = await Promise.all([
         supabase.rpc("has_pin"),

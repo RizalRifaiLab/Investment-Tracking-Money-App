@@ -5,12 +5,20 @@ import { supabase } from "@/lib/supabase";
 import type { Lang, Strings } from "@/lib/i18n";
 import { Segmented } from "./ui";
 
-export type AuthStep = "signup" | "otp" | "setpin" | "confirmpin" | "locked";
+export type AuthStep = "signup" | "pinlogin" | "otp" | "setpin" | "confirmpin" | "locked";
 
 // Set while a PIN reset is pending (forgot / locked out). In localStorage because the email link opens a new tab.
 const RESET_KEY = "nilai-reset-pin";
 export const resetPending = () => { try { return localStorage.getItem(RESET_KEY) === "1"; } catch { return false; } };
 const setResetPending = (on: boolean) => { try { if (on) localStorage.setItem(RESET_KEY, "1"); else localStorage.removeItem(RESET_KEY); } catch {} };
+// Remember the last email so a returning user only types the PIN.
+const EMAIL_KEY = "nilai-email";
+export const storedEmail = () => { try { return localStorage.getItem(EMAIL_KEY) ?? ""; } catch { return ""; } };
+
+async function pinApi(body: { email: string; pin?: string }) {
+  const r = await fetch("/api/auth/pin", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+  return r.json() as Promise<{ status?: string; left?: number; error?: string; session?: { access_token: string; refresh_token: string } }>;
+}
 
 type Props = {
   t: Strings; lang: Lang; setLang: (l: Lang) => void;
@@ -23,7 +31,6 @@ const input = "w-full min-h-12 px-3 py-2 text-base border-2 border-text bg-bg te
 const primary = "bg-accent hover:bg-accent-600 text-bg font-extrabold text-[15px] px-4 py-3.5 text-left cursor-pointer disabled:opacity-60";
 
 export default function Auth({ t, lang, setLang, step, setStep, email, setEmail, name, onUnlocked }: Props) {
-  const [signName, setSignName] = useState("");
   const [otp, setOtp] = useState("");
   const [err, setErr] = useState("");
   const [busy, setBusy] = useState(false);
@@ -32,9 +39,9 @@ export default function Auth({ t, lang, setLang, step, setStep, email, setEmail,
 
   const go = (s: AuthStep, e = "") => { setErr(e); setPinBuf(""); setStep(s); };
 
-  async function sendCode(addr: string, opts: { name?: string; reset?: boolean; errMsg?: string } = {}) {
+  async function sendCode(addr: string, opts: { reset?: boolean; errMsg?: string } = {}) {
     setBusy(true);
-    const { error } = await supabase.auth.signInWithOtp({ email: addr, options: { data: opts.name ? { name: opts.name } : undefined, emailRedirectTo: location.origin } });
+    const { error } = await supabase.auth.signInWithOtp({ email: addr, options: { data: { name: addr.split("@")[0] }, emailRedirectTo: location.origin } });
     setBusy(false);
     if (error) return setErr(error.message);
     setResetPending(!!opts.reset);
@@ -46,7 +53,13 @@ export default function Auth({ t, lang, setLang, step, setStep, email, setEmail,
     const em = email.trim();
     if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(em)) return setErr(t.badEmail);
     setEmail(em);
-    await sendCode(em, { name: signName.trim() || em.split("@")[0] });
+    try { localStorage.setItem(EMAIL_KEY, em); } catch {}
+    setBusy(true);
+    const r = await pinApi({ email: em }).catch(() => ({ status: "none" }));
+    setBusy(false);
+    // Existing account with a PIN → PIN only; new email (or no PIN yet) → email code first.
+    if (r.status === "has_pin") return go("pinlogin");
+    await sendCode(em);
   }
 
   async function verifyOtp() {
@@ -67,6 +80,18 @@ export default function Auth({ t, lang, setLang, step, setStep, email, setEmail,
       if (error) return go("setpin", error.message);
       setResetPending(false);
       return onUnlocked();
+    }
+    if (step === "pinlogin") {
+      const r = await pinApi({ email, pin: buf }).catch((e: Error) => ({ error: e.message } as Awaited<ReturnType<typeof pinApi>>));
+      if (r.status === "ok" && r.session) {
+        const { error } = await supabase.auth.setSession(r.session);
+        if (error) return go("pinlogin", error.message);
+        return onUnlocked();
+      }
+      if (r.status === "wrong") return go("pinlogin", t.wrongPin + r.left + t.triesLeft);
+      if (r.status === "locked") return sendCode(email, { reset: true, errMsg: t.lockedOut });
+      if (r.status === "none") return sendCode(email);
+      return go("pinlogin", r.error ?? "");
     }
     // locked
     const { data: left, error } = await supabase.rpc("verify_pin", { pin: buf });
@@ -93,7 +118,8 @@ export default function Auth({ t, lang, setLang, step, setStep, email, setEmail,
     }
   }
 
-  const pinMode = step === "setpin" || step === "confirmpin" || step === "locked";
+  const pinMode = step === "setpin" || step === "confirmpin" || step === "locked" || step === "pinlogin";
+  const unlocking = step === "locked" || step === "pinlogin";
   const pressRef = useRef(press);
   useEffect(() => { pressRef.current = press; });
   useEffect(() => {
@@ -122,8 +148,6 @@ export default function Auth({ t, lang, setLang, step, setStep, email, setEmail,
         {step === "signup" && (
           <form className="flex flex-col gap-4" onSubmit={(e) => { e.preventDefault(); signup(); }}>
             <h2 className="m-0 text-[32px] font-extrabold">{t.signup}</h2>
-            <label className="flex flex-col gap-1.5"><span className="text-xs text-neutral-800">{t.name}</span>
-              <input className={input} value={signName} onChange={(e) => setSignName(e.target.value)} autoComplete="name" /></label>
             <label className="flex flex-col gap-1.5"><span className="text-xs text-neutral-800">Email</span>
               <input className={input} type="email" value={email} onChange={(e) => { setEmail(e.target.value); setErr(""); }} placeholder="you@email.com" autoComplete="email" /></label>
             {errEl}
@@ -149,9 +173,9 @@ export default function Auth({ t, lang, setLang, step, setStep, email, setEmail,
         {pinMode && (
           <div className="flex flex-col gap-[18px] max-w-[360px]">
             <h2 className="m-0 text-[32px] font-extrabold">
-              {step === "locked" ? t.hi + (name ? ", " + name : "") : step === "confirmpin" ? t.confirmPin : t.setPin}
+              {unlocking ? t.hi + (name ? ", " + name : "") : step === "confirmpin" ? t.confirmPin : t.setPin}
             </h2>
-            <div className="text-[15px] text-neutral-800 min-h-[22px]">{step === "locked" ? t.enterPin : t.setPinS}</div>
+            <div className="text-[15px] text-neutral-800 min-h-[22px]">{unlocking ? t.enterPin : t.setPinS}{step === "pinlogin" && <> · <b className="text-text">{email}</b></>}</div>
             <div className="flex gap-2.5" aria-label={`${pinBuf.length} / 6`}>
               {[0, 1, 2, 3, 4, 5].map((i) => <div key={i} className={`size-[22px] border-2 border-text ${i < pinBuf.length ? "bg-text" : ""}`} />)}
             </div>
@@ -163,9 +187,11 @@ export default function Auth({ t, lang, setLang, step, setStep, email, setEmail,
                   onClick={() => press(k === "⌫" ? "del" : k)}>{k}</button>
               ))}
             </div>
-            {step === "locked" && (
-              <button type="button" className="text-left text-sm font-extrabold text-accent-700 cursor-pointer"
-                onClick={() => sendCode(email, { reset: true })} disabled={busy}>{t.forgot}</button>
+            {unlocking && (
+              <div className="flex gap-5 text-sm font-extrabold">
+                <button type="button" className="text-accent-700 cursor-pointer" onClick={() => sendCode(email, { reset: true })} disabled={busy}>{t.forgot}</button>
+                {step === "pinlogin" && <button type="button" className="text-accent-700 cursor-pointer" onClick={() => go("signup")}>{t.useOther}</button>}
+              </div>
             )}
           </div>
         )}
