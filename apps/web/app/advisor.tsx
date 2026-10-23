@@ -7,7 +7,7 @@ import type { Lang, Strings } from "@/lib/i18n";
 import { btnOutline, btnPrimary, Field, kicker, Segmented } from "./ui";
 
 type Msg = { role: "user" | "assistant"; content: string };
-type Settings = { rules: string; defaultRules: string; model: string; keyHint: string | null };
+type Settings = { rules: string; defaultRules: string; model: string; provider: string; keyHint: string | null; claudeKeyHint: string | null };
 
 async function call<T>(method: string, body?: unknown): Promise<{ ok: boolean; status: number; j: T }> {
   const { data } = await supabase.auth.getSession();
@@ -50,22 +50,25 @@ export function Advisor({ t, lang, userId }: { t: Strings; lang: Lang; userId: s
     else { setMsgs((m) => m.slice(0, -1)); setInput(q); setErr(errFor(j.code, j.error)); }
   }
 
-  async function saveSettings(p: Partial<Pick<Settings, "rules" | "model">>) {
+  async function saveSettings(p: Partial<Pick<Settings, "rules" | "model" | "provider">>) {
     if (!st) return;
     const next = { ...st, ...p };
     setSt(next);
     // rules equal to the default are stored as null so future default improvements still apply
-    const { error } = await supabase.from("advisor_settings").upsert({ user_id: userId, rules: next.rules.trim() === next.defaultRules.trim() ? null : next.rules, model: next.model });
+    const { error } = await supabase.from("advisor_settings").upsert({ user_id: userId, rules: next.rules.trim() === next.defaultRules.trim() ? null : next.rules, model: next.model, provider: next.provider });
     setNote(error ? error.message : t.saved);
   }
   async function saveKey(apiKey: string | null) {
+    if (!st) return;
     setNote("");
-    const { ok, j } = await call<{ keyHint?: string | null; code?: string; error?: string }>("PUT", { apiKey });
+    const { ok, j } = await call<{ keyHint?: string | null; code?: string; error?: string }>("PUT", { apiKey, provider: st.provider });
     if (!ok) return setNote(j.code === "format" ? t.errKeyFormat : errFor(j.code, j.error));
     setKeyDraft("");
-    setSt((s) => s && { ...s, keyHint: j.keyHint ?? null });
+    setSt((s) => s && { ...s, [s.provider === "claude" ? "claudeKeyHint" : "keyHint"]: j.keyHint ?? null });
     setNote(t.saved);
   }
+  const isClaude = st?.provider === "claude";
+  const hint = isClaude ? st?.claudeKeyHint : st?.keyHint;
 
   const quick = lang === "id"
     ? [t.q5, "Gajiku bulan ini sebaiknya ke mana?", "Apakah aku on track ke target aktifku?", "Investasi terbaik jangka panjang untukku?"]
@@ -78,7 +81,7 @@ export function Advisor({ t, lang, userId }: { t: Strings; lang: Lang; userId: s
         <div className={`${kicker} text-accent-700`}>{t.advisor}</div>
         <div className="flex flex-col gap-3">
           {!msgs.length && <div className="text-[15px] text-neutral-800 text-pretty">{t.chatIntro}</div>}
-          {st && !st.keyHint && <div className="text-sm font-extrabold text-accent-700">{t.errNoKey}</div>}
+          {st && !hint && <div className="text-sm font-extrabold text-accent-700">{t.errNoKey}</div>}
           {msgs.map((m, i) => (
             <div key={i} className={`flex flex-col gap-1 ${m.role === "user" ? "bg-surface p-3" : "py-1"}`}>
               <div className={`text-[11px] font-extrabold tracking-[0.08em] uppercase ${m.role === "user" ? "text-neutral-700" : "text-accent-700"}`}>
@@ -117,7 +120,7 @@ export function Advisor({ t, lang, userId }: { t: Strings; lang: Lang; userId: s
         </ul>
 
         {st && (
-          <details className="px-6 py-5 border-t-2 border-text" open={!st.keyHint}>
+          <details className="px-6 py-5 border-t-2 border-text" open={!hint}>
             <summary className={`${kicker} cursor-pointer`}>{t.advSettings}</summary>
             <div className="flex flex-col gap-4 mt-4">
               <label className="flex flex-col gap-1.5">
@@ -127,14 +130,20 @@ export function Advisor({ t, lang, userId }: { t: Strings; lang: Lang; userId: s
               </label>
               <button className="self-start text-[13px] font-extrabold text-accent-700 cursor-pointer" onClick={() => saveSettings({ rules: st.defaultRules })}>{t.resetRules}</button>
               <div className="flex flex-col gap-1.5">
-                <span className="text-xs text-neutral-800">{t.modelL}</span>
-                <Segmented options={[["deepseek-flash", "Flash"], ["deepseek-v4-pro", "Pro"]]} value={st.model} onChange={(model) => saveSettings({ model })} className="self-start" pad="px-3 py-2" />
+                <span className="text-xs text-neutral-800">{t.providerL}</span>
+                <Segmented options={[["deepseek", "DeepSeek"], ["claude", "Claude"]]} value={st.provider} onChange={(provider) => { setKeyDraft(""); saveSettings({ provider }); }} className="self-start" pad="px-3 py-2" />
               </div>
-              <Field label={t.ownKey} type="password" autoComplete="off" value={keyDraft} onChange={(e) => setKeyDraft(e.target.value)} placeholder={st.keyHint ? t.keyActive + st.keyHint : "sk-…"} />
-              <div className="text-xs text-neutral-700">{t.keyNote}</div>
+              {isClaude ? <div className="text-xs text-neutral-700">{t.claudeModelNote}</div> : (
+                <div className="flex flex-col gap-1.5">
+                  <span className="text-xs text-neutral-800">{t.modelL}</span>
+                  <Segmented options={[["deepseek-flash", "Flash"], ["deepseek-v4-pro", "Pro"]]} value={st.model} onChange={(model) => saveSettings({ model })} className="self-start" pad="px-3 py-2" />
+                </div>
+              )}
+              <Field label={isClaude ? t.ownKeyClaude : t.ownKey} type="password" autoComplete="off" value={keyDraft} onChange={(e) => setKeyDraft(e.target.value)} placeholder={hint ? t.keyActive + hint : isClaude ? "sk-ant-…" : "sk-…"} />
+              <div className="text-xs text-neutral-700">{isClaude ? t.keyNoteClaude : t.keyNote}</div>
               <div className="flex gap-2 flex-wrap">
                 <button className={btnOutline} onClick={() => saveKey(keyDraft)} disabled={!keyDraft.trim()}>{t.saveKey}</button>
-                {st.keyHint && <button className="text-[13px] font-extrabold text-accent-700 cursor-pointer" onClick={() => saveKey(null)}>{t.removeKey}</button>}
+                {hint && <button className="text-[13px] font-extrabold text-accent-700 cursor-pointer" onClick={() => saveKey(null)}>{t.removeKey}</button>}
               </div>
               <div className="text-sm font-semibold text-accent-700" role="status">{note}</div>
             </div>

@@ -1,4 +1,5 @@
 import { createCipheriv, createDecipheriv, randomBytes } from "node:crypto";
+import Anthropic from "@anthropic-ai/sdk";
 import { newsQueries, parseRss, type AssetClass, type NewsItem } from "@nilai/core";
 
 // ---------- own API keys: AES-256-GCM with a server secret (AI_KEY_SECRET, 64 hex chars) ----------
@@ -58,6 +59,35 @@ export async function deepseek(apiKey: string, model: string, messages: ChatMsg[
 export async function keyWorks(apiKey: string) {
   const r = await fetch("https://api.deepseek.com/models", { headers: { Authorization: `Bearer ${apiKey}` }, signal: AbortSignal.timeout(10_000) });
   return r.ok;
+}
+
+// ---------- Claude (user's own Anthropic key) ----------
+export const CLAUDE_MODEL = "claude-opus-5-5";
+
+export async function claude(apiKey: string, messages: ChatMsg[]): Promise<string> {
+  const client = new Anthropic({ apiKey, timeout: 110_000, maxRetries: 1 });
+  try {
+    const r = await client.beta.messages.create({
+      model: CLAUDE_MODEL, max_tokens: 16000,
+      output_config: { effort: "low" }, // short chat answers; thinking stays adaptive
+      // on a safety decline the API reroutes to a suitable model inside the same call
+      betas: ["server-side-fallback-2026-07-01"], fallbacks: "default",
+      system: messages.filter((m) => m.role === "system").map((m) => m.content).join("\n\n"),
+      messages: messages.filter((m) => m.role !== "system") as Anthropic.Beta.BetaMessageParam[],
+    });
+    if (r.stop_reason === "refusal") throw new AiError("down", "Claude declined to answer this question.");
+    return r.content.map((b) => (b.type === "text" ? b.text : "")).join("").trim();
+  } catch (e) {
+    if (e instanceof Anthropic.AuthenticationError || e instanceof Anthropic.PermissionDeniedError) throw new AiError("auth", "Anthropic rejected the API key.");
+    if (e instanceof Anthropic.RateLimitError) throw new AiError("rate", "Claude is rate-limiting; try again in a minute.");
+    if (e instanceof Anthropic.APIError) throw new AiError("down", `Claude error ${e.status ?? ""}: ${e.message}`);
+    throw e;
+  }
+}
+
+export async function claudeKeyWorks(apiKey: string) {
+  try { await new Anthropic({ apiKey, timeout: 10_000, maxRetries: 0 }).models.retrieve(CLAUDE_MODEL); return true; }
+  catch { return false; }
 }
 
 export const DEFAULT_RULES = `You are the advisor inside Nilai, a personal investment tracker for an Indonesian investor.

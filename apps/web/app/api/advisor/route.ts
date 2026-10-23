@@ -1,10 +1,10 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { RETURN_PCT, CRYPTO_CAP, type RiskProfile } from "@nilai/core";
 import { admin } from "@/lib/prices";
-import { AiError, DEFAULT_RULES, decryptKey, deepseek, encryptKey, fetchNews, keyWorks, type ChatMsg } from "@/lib/advisor";
+import { AiError, DEFAULT_RULES, claude, claudeKeyWorks, decryptKey, deepseek, encryptKey, fetchNews, keyWorks, type ChatMsg } from "@/lib/advisor";
 
 export const maxDuration = 120;
-// Users bring their own DeepSeek key. DEEPSEEK_API_KEY on the server is an optional shared fallback, capped per day.
+// Users bring their own DeepSeek or Anthropic key. DEEPSEEK_API_KEY on the server is an optional shared fallback, capped per day.
 const APP_KEY_DAILY_LIMIT = 30;
 const R = (v: number) => "Rp " + Math.round(v).toLocaleString("id-ID");
 
@@ -20,7 +20,7 @@ async function asUser(req: Request) {
 }
 
 async function settingsOf(userId: string) {
-  const { data } = await admin().from("advisor_settings").select("rules,model,api_key_enc,key_hint").eq("user_id", userId).maybeSingle();
+  const { data } = await admin().from("advisor_settings").select("rules,model,provider,api_key_enc,key_hint,claude_key_enc,claude_key_hint").eq("user_id", userId).maybeSingle();
   return data;
 }
 
@@ -66,7 +66,8 @@ export async function GET(req: Request) {
   ]);
   return Response.json({
     messages: (msgs.data ?? []).reverse(),
-    settings: { rules: st?.rules ?? DEFAULT_RULES, defaultRules: DEFAULT_RULES, model: st?.model ?? "deepseek-flash", keyHint: st?.key_hint ?? null },
+    settings: { rules: st?.rules ?? DEFAULT_RULES, defaultRules: DEFAULT_RULES, model: st?.model ?? "deepseek-flash", provider: st?.provider ?? "deepseek",
+      keyHint: st?.key_hint ?? null, claudeKeyHint: st?.claude_key_hint ?? null },
     news: await fetchNews(hs.data ?? []),
   });
 }
@@ -79,8 +80,10 @@ export async function POST(req: Request) {
   if (typeof message !== "string" || !message.trim() || message.length > 2000) return Response.json({ error: "bad message" }, { status: 400 });
 
   const st = await settingsOf(u.user.id);
-  const ownKey = st?.api_key_enc ? decryptKey(st.api_key_enc) : null;
-  const apiKey = ownKey ?? process.env.DEEPSEEK_API_KEY;
+  const useClaude = st?.provider === "claude";
+  const enc = useClaude ? st?.claude_key_enc : st?.api_key_enc;
+  const ownKey = enc ? decryptKey(enc) : null;
+  const apiKey = useClaude ? ownKey : ownKey ?? process.env.DEEPSEEK_API_KEY; // the shared fallback is DeepSeek only
   if (!apiKey) return Response.json({ code: "nokey" }, { status: 503 });
   if (!ownKey) {
     const since = new Date(); since.setUTCHours(-7, 0, 0, 0); // since 00:00 WIB
@@ -107,7 +110,7 @@ ${news.map((n) => `- ${n.date.slice(0, 10)} ${n.source}: ${n.title}`).join("\n")
     ...((history.data ?? []).reverse() as ChatMsg[]), { role: "user", content: message.trim() }];
 
   try {
-    const reply = await deepseek(apiKey, ownKey ? st!.model : "deepseek-flash", messages);
+    const reply = useClaude ? await claude(apiKey, messages) : await deepseek(apiKey, ownKey ? st!.model : "deepseek-flash", messages);
     await admin().from("chat_messages").insert([
       { user_id: u.user.id, role: "user", content: message.trim() },
       { user_id: u.user.id, role: "assistant", content: reply },
@@ -119,19 +122,22 @@ ${news.map((n) => `- ${n.date.slice(0, 10)} ${n.source}: ${n.title}`).join("\n")
   }
 }
 
-// PUT {apiKey: string | null} → save (after checking it works) or remove the user's own DeepSeek key.
+// PUT {provider, apiKey: string | null} → save (after checking it works) or remove the user's own key for that provider.
 export async function PUT(req: Request) {
   const u = await asUser(req);
   if (!u) return Response.json({ error: "unauthorized" }, { status: 401 });
-  const { apiKey } = await req.json().catch(() => ({}));
+  const { apiKey, provider } = await req.json().catch(() => ({}));
+  const isClaude = provider === "claude";
+  const col = isClaude ? { enc: "claude_key_enc", hint: "claude_key_hint" } : { enc: "api_key_enc", hint: "key_hint" };
   if (apiKey === null) {
-    await admin().from("advisor_settings").upsert({ user_id: u.user.id, api_key_enc: null, key_hint: null });
+    await admin().from("advisor_settings").upsert({ user_id: u.user.id, [col.enc]: null, [col.hint]: null });
     return Response.json({ keyHint: null });
   }
-  if (typeof apiKey !== "string" || !/^sk-[A-Za-z0-9]{16,}$/.test(apiKey.trim())) return Response.json({ code: "format" }, { status: 400 });
-  if (!(await keyWorks(apiKey.trim()))) return Response.json({ code: "auth" }, { status: 400 });
+  const format = isClaude ? /^sk-ant-[A-Za-z0-9_-]{20,}$/ : /^sk-[A-Za-z0-9]{16,}$/;
+  if (typeof apiKey !== "string" || !format.test(apiKey.trim())) return Response.json({ code: "format" }, { status: 400 });
+  if (!(await (isClaude ? claudeKeyWorks : keyWorks)(apiKey.trim()))) return Response.json({ code: "auth" }, { status: 400 });
   const keyHint = "…" + apiKey.trim().slice(-4);
-  const { error } = await admin().from("advisor_settings").upsert({ user_id: u.user.id, api_key_enc: encryptKey(apiKey.trim()), key_hint: keyHint });
+  const { error } = await admin().from("advisor_settings").upsert({ user_id: u.user.id, [col.enc]: encryptKey(apiKey.trim()), [col.hint]: keyHint });
   if (error) return Response.json({ error: error.message }, { status: 500 });
   return Response.json({ keyHint });
 }
