@@ -69,14 +69,17 @@ export class AiError extends Error { constructor(public code: "auth" | "balance"
 export async function deepseek(apiKey: string, model: string, messages: ChatMsg[], json = false): Promise<string> {
   const r = await fetch("https://api.deepseek.com/chat/completions", {
     method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
-    body: JSON.stringify({ model, messages, max_tokens: 2000, stream: false, ...(json && { response_format: { type: "json_object" } }) }), signal: AbortSignal.timeout(110_000),
+    // DeepSeek models think before answering, and the thinking counts against max_tokens
+    body: JSON.stringify({ model, messages, max_tokens: 8000, stream: false, ...(json && { response_format: { type: "json_object" } }) }), signal: AbortSignal.timeout(110_000),
   });
   if (r.status === 401) throw new AiError("auth", "DeepSeek rejected the API key.");
   if (r.status === 402) throw new AiError("balance", "The DeepSeek account has no balance left.");
   if (r.status === 429) throw new AiError("rate", "DeepSeek is rate-limiting; try again in a minute.");
   if (!r.ok) throw new AiError("down", `DeepSeek error ${r.status}.`);
   const j = await r.json();
-  return String(j.choices?.[0]?.message?.content ?? "").trim();
+  const text = String(j.choices?.[0]?.message?.content ?? "").trim();
+  if (!text) throw new AiError("down", "DeepSeek used its whole answer budget thinking and returned no text.");
+  return text;
 }
 
 /** Cheap validity check for a key the user pastes in. */
