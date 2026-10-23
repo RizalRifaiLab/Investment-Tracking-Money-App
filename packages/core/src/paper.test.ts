@@ -40,5 +40,7 @@ describe('parseOrders', () => {
     const r = parseOrders('Here:\n```json\n{"note":"Calm","orders":[{"symbol":"btc-usd","side":"buy","amount_idr":"5000000","reason":"DCA"},{"symbol":"VOO","side":"hold","amount_idr":1}]}\n```');
     expect(r).toEqual({ note: 'Calm', orders: [{ symbol: 'BTC-USD', side: 'buy', amount_idr: 5_000_000, reason: 'DCA' }] });
     expect(() => parseOrders('no json')).toThrow();
+    const short = parseOrders('{"orders":[{"symbol":"BMRI","side":"buy","amount_idr":1},{"symbol":"btc","side":"buy","amount_idr":1},{"symbol":"DOGE","side":"buy","amount_idr":1}]}');
+    expect(short.orders.map((o) => o.symbol)).toEqual(['BMRI.JK', 'BTC-USD', 'DOGE']);
   });
 });

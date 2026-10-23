@@ -60,13 +60,19 @@ export function fillOrders(cash: number, positions: Record<string, number>, orde
   return { cash, positions: pos, fills, rejected };
 }
 
+/** The AI sometimes drops the Yahoo suffix ("BMRI", "BTC"); map it back when that is unambiguous. */
+function toUniverse(symbol: string) {
+  const s = symbol.trim().toUpperCase();
+  return PAPER_UNIVERSE[s] ? s : [`${s}.JK`, `${s}-USD`].find((x) => PAPER_UNIVERSE[x]) ?? s;
+}
+
 /** The AI replies with JSON, sometimes wrapped in prose or a code fence. Bad orders are dropped. */
 export function parseOrders(text: string): { note: string; orders: PaperOrder[] } {
   const j = JSON.parse(text.slice(text.indexOf('{'), text.lastIndexOf('}') + 1));
   const orders = (Array.isArray(j.orders) ? j.orders : []).flatMap((o: Record<string, unknown>) => {
     const amount = Number(o?.amount_idr);
     return typeof o?.symbol === 'string' && (o.side === 'buy' || o.side === 'sell') && amount > 0
-      ? [{ symbol: o.symbol.toUpperCase(), side: o.side, amount_idr: amount, reason: String(o.reason ?? '') }] : [];
+      ? [{ symbol: toUniverse(o.symbol), side: o.side, amount_idr: amount, reason: String(o.reason ?? '') }] : [];
   });
   return { note: String(j.note ?? '').slice(0, 1500), orders };
 }
