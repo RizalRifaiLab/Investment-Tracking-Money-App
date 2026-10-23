@@ -12,7 +12,7 @@ import { Goals } from "./goals";
 import { Markets } from "./markets";
 import { Dashboard, Holdings, viewModel, type Open } from "./portfolio";
 import { profileLabel, Settings } from "./settings";
-import { Segmented } from "./ui";
+import { Logo, Segmented } from "./ui";
 
 export type Profile = { user_id: string; name: string; currency: "IDR" | "USD"; language: Lang; risk_profile: RiskProfile };
 
@@ -80,14 +80,14 @@ export default function Shell({ t, lang, setLang, email, profile, setProfile, lo
         {/* narrow: header row + scrolling tab row */}
         <div className="wide:hidden">
           <div className="flex items-center gap-2 px-4 py-2.5">
-            <div className="font-extrabold text-xl flex-1">Nilai</div>
+            <div className="flex-1"><Logo size={20} /></div>
             {toggles("px-[9px] py-2.5")}
           </div>
           <nav className="flex gap-5 overflow-x-auto px-4 border-t-2 border-text">{tabs(false)}</nav>
         </div>
         {/* wide: single 60px bar */}
         <div className="hidden wide:flex h-[60px] items-center gap-7 px-8">
-          <div className="font-extrabold text-[22px] tracking-[-0.02em]">Nilai</div>
+          <Logo size={22} />
           <nav className="flex gap-[22px] flex-1 min-w-0">{tabs(true)}</nav>
           {toggles("px-2.5 py-[5px]")}
         </div>

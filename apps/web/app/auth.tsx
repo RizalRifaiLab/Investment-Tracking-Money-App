@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import type { Lang, Strings } from "@/lib/i18n";
-import { Segmented } from "./ui";
+import { Logo, Segmented } from "./ui";
 
 export type AuthStep = "signup" | "pinlogin" | "otp" | "setpin" | "confirmpin" | "locked";
 
@@ -137,7 +137,7 @@ export default function Auth({ t, lang, setLang, step, setStep, email, setEmail,
   return (
     <main className="min-h-screen grid wide:grid-cols-[1.1fr_1fr]">
       <section className="bg-accent text-bg px-5 py-7 wide:p-14 flex flex-col justify-between gap-8">
-        <div className="font-extrabold text-2xl tracking-[-0.02em]">Nilai</div>
+        <Logo size={28} onAccent />
         <div className="font-extrabold text-4xl wide:text-[64px] leading-[1.02] tracking-[-0.03em] max-w-[640px] text-pretty">{t.welcome}</div>
         <div className="text-sm font-semibold">IDR · USD · Crypto · Saham · ETF · Deposito · Reksa dana · Emas</div>
       </section>

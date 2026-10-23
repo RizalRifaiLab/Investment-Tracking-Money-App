@@ -5,7 +5,7 @@ import "./globals.css";
 const archivo = Archivo({ variable: "--font-archivo", subsets: ["latin"], weight: ["400", "600", "800"] });
 
 export const metadata: Metadata = {
-  title: "Nilai",
+  title: "Tumbuh",
   description: "Every rupiah, counted toward the goal you set.",
 };
 
