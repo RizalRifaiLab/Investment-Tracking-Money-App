@@ -70,15 +70,21 @@ export function Advisor({ t, lang, userId }: { t: Strings; lang: Lang; userId: s
   const isClaude = st?.provider === "claude";
   const hint = isClaude ? st?.claudeKeyHint : st?.keyHint;
 
-  const quick = lang === "id"
-    ? [t.qReview, t.qMarket, t.qBooks, t.q5, "Gajiku bulan ini sebaiknya ke mana?", "Apakah aku on track ke target aktifku?", "Investasi terbaik jangka panjang untukku?"]
-    : [t.qReview, t.qMarket, t.qBooks, t.q5, "Where should this month’s salary go?", "Am I on track for my active goal?", "Best long-term investment for me?"];
+  const quick = [t.qCoin, t.qRebalance, t.qReview, t.qMarket, t.q5, t.qBooks];
+  async function clearChat() {
+    if (busy || !confirm(t.clearConfirm)) return;
+    const { error } = await supabase.from("chat_messages").delete().eq("user_id", userId);
+    if (error) setErr(error.message); else { setMsgs([]); setErr(""); }
+  }
   const fmtDate = (d: string) => (d ? new Date(d).toLocaleDateString(lang === "id" ? "id-ID" : "en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }) : "");
 
   return (
     <div className="grid wide:grid-cols-[1.6fr_1fr] gap-0.5 bg-text border-b-2 border-text">
       <section className="bg-bg px-4 py-5 wide:p-8 flex flex-col gap-4 min-w-0">
-        <div className={`${kicker} text-accent-700`}>{t.advisor}</div>
+        <div className="flex items-center justify-between gap-3">
+          <div className={`${kicker} text-accent-700`}>{t.advisor}</div>
+          {msgs.length > 0 && <button className="text-[13px] font-extrabold text-accent-700 cursor-pointer" onClick={clearChat} disabled={busy}>{t.clearChat}</button>}
+        </div>
         <div className="flex flex-col gap-3">
           {!msgs.length && <div className="text-[15px] text-neutral-800 text-pretty">{t.chatIntro}</div>}
           {st && !hint && <div className="text-sm font-extrabold text-accent-700">{t.errNoKey}</div>}

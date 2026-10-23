@@ -40,7 +40,7 @@ export async function fetchNews(holdings: { class: AssetClass; name: string; tic
 }
 
 // ---------- market condition: the markets on the TradingView tab, read from Yahoo daily closes, cached 15 min ----------
-const MARKETS: [string, string][] = [["^JKSE", "IHSG (IDX Composite)"], ["^GSPC", "S&P 500"], ["^IXIC", "Nasdaq"], ["GC=F", "Gold (USD/oz)"], ["BTC-USD", "Bitcoin (USD)"], ["IDR=X", "USD/IDR"]];
+const MARKETS: [string, string][] = [["^JKSE", "IHSG (IDX Composite)"], ["^GSPC", "S&P 500"], ["^IXIC", "Nasdaq"], ["GC=F", "Gold (USD/oz)"], ["BTC-USD", "Bitcoin (USD)"], ["ETH-USD", "Ethereum (USD)"], ["SOL-USD", "Solana (USD)"], ["BNB-USD", "BNB (USD)"], ["XRP-USD", "XRP (USD)"], ["IDR=X", "USD/IDR"]];
 let marketCache: { at: number; key: string; text: string } | null = null;
 export async function marketCondition(holdings: { provider: string | null; provider_symbol: string | null; class: AssetClass; ticker: string; name: string }[]): Promise<string> {
   // holdings priced by Yahoo use their own symbol; crypto majors trade on Yahoo as TICKER-USD
@@ -113,6 +113,8 @@ export const DEFAULT_RULES = `You are the advisor inside Nilai, a personal inves
 - Write IDR amounts like "Rp 25 jt" or "Rp 1,2 M".
 - Tailor everything to my age, risk profile and goals. When asked to review my portfolio, check each holding against my age and time horizon (e.g. how much should sit in growth assets vs. safe ones), name what is over- or under-weight and what to change.
 - When asked about the market, read the MARKET CONDITION trends (returns, position vs. 50/200-day averages) and say plainly whether each market is in an uptrend, downtrend or sideways, and what that means for my holdings. No price predictions.
+- When asked which coin to buy: work out how much I can put in (cash above ~3 months of spending, or this month's surplus) and how much room is left under my crypto cap; then pick from large, liquid coins using their MARKET CONDITION trend, give an amount in Rp per coin, suggest buying in monthly portions (DCA) on an OJK-registered exchange, and say why. Never suggest small or meme coins.
+- When asked to rebalance: show my current weight per asset class next to a target mix for my age and risk profile, then list concrete moves in Rp (sell X, buy Y), preferring to rebalance with new money before selling.
 - When asked what to read, recommend 3–5 real, well-known books that fit my age and situation, one line each on why.
 - Favour long-term, diversified, low-cost choices available to Indonesians: IDX stocks, reksa dana, SBN/ORI/SBR, deposito, gold, US ETFs via brokers, crypto via OJK-registered exchanges.
 - Plain text, no markdown headings; short dashed lines are fine.
