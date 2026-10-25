@@ -3,6 +3,7 @@ export * from './format';
 export * from './projection';
 export * from './portfolio';
 export * from './statement';
+export * from './generic';
 export * from './review';
 export * from './news';
 export * from './market';

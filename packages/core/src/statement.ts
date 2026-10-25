@@ -87,7 +87,7 @@ export function parseMandiri(pages: Line[][]): ParsedAccount[] {
   }));
 }
 
-const MONTHS: Record<string, number> = { Jan: 1, Feb: 2, Mar: 3, Apr: 4, May: 5, Mei: 5, Jun: 6, Jul: 7, Aug: 8, Agu: 8, Agt: 8, Sep: 9, Oct: 10, Okt: 10, Nov: 11, Dec: 12, Des: 12 };
+export const MONTHS: Record<string, number> = { Jan: 1, Feb: 2, Mar: 3, Apr: 4, May: 5, Mei: 5, Jun: 6, Jul: 7, Aug: 8, Agu: 8, Agt: 8, Sep: 9, Oct: 10, Okt: 10, Nov: 11, Dec: 12, Des: 12 };
 const ID_AMOUNT = /^[+-]\d{1,3}(?:\.\d{3})*,\d{2}$/; // +1.100.000,00
 const ID_BALANCE = /^-?\d{1,3}(?:\.\d{3})*,\d{2}$/;
 const idNum = (s: string) => Number(s.replace(/[+.]/g, '').replace(',', '.'));
