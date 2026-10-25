@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { categorize, parseMandiri, type Line } from './statement';
+import { addsUp, categorize, parseMandiri, type Line } from './statement';
 
 // Synthetic statement in Mandiri's layout (cell text @ x position). Names and numbers are made up.
 const L = (...cells: [string, number][]): Line => cells.map(([s, x]) => ({ s, x }));
@@ -65,5 +65,14 @@ describe('categorize', () => {
     expect(categorize('something', 5)).toBe('Income');
     expect(categorize('Transfer KE BIBI makan siang', -1)).toBe('Food');
     expect(categorize('MONTHLY CARD CHARGE 04-09-26', -1)).toBe('Bills');
+  });
+});
+
+describe('addsUp', () => {
+  it('checks opening + transactions against the closing balance, and passes when a balance is unknown', () => {
+    const tx = [{ amount: 250_000.1 }, { amount: -100_000 }];
+    expect(addsUp(1_000_000, 1_150_000.1, tx)).toBe(true);
+    expect(addsUp(1_000_000, 1_250_000, tx)).toBe(false);
+    expect(addsUp(null, 1_250_000, tx)).toBe(true);
   });
 });

@@ -1,9 +1,11 @@
 import { getDocumentProxy } from "unpdf";
 import * as XLSX from "xlsx";
 import { parseMandiri, parseMandiriLivin, type Line } from "@nilai/core";
+import { AiError, userAi } from "@/lib/advisor";
+import { parseStatement } from "@/lib/ai";
 import { userFromRequest } from "@/lib/prices";
 
-export const maxDuration = 120;
+export const maxDuration = 300; // AI reading of a long statement
 const MAX_BYTES = 4 * 1024 * 1024; // Vercel request body limit is 4.5 MB
 
 /** PDF pages → visual lines of {x, text} cells (items on the same baseline, left to right). */
@@ -25,7 +27,8 @@ async function pdfLines(bytes: Uint8Array, password?: string): Promise<Line[][]>
 // POST multipart {file, password?} → transactions grouped by account, for the user to review.
 // Nothing is stored here, and neither the file, its contents nor the password is logged.
 export async function POST(req: Request) {
-  if (!(await userFromRequest(req))) return Response.json({ error: "unauthorized" }, { status: 401 });
+  const user = await userFromRequest(req);
+  if (!user) return Response.json({ error: "unauthorized" }, { status: 401 });
   const form = await req.formData();
   const file = form.get("file");
   const password = String(form.get("password") ?? "") || undefined;
@@ -55,12 +58,14 @@ export async function POST(req: Request) {
   }
   if (!text.trim()) return Response.json({ code: "empty" }, { status: 422 });
 
-  // Other banks and spreadsheets: AI reading, only when a key is configured.
-  if (!process.env.ANTHROPIC_API_KEY) return Response.json({ code: "unsupported" }, { status: 422 });
+  // Other banks, e-wallets and spreadsheets: read by the user's AI (Advisor settings).
+  const ai = await userAi(user.id);
+  if (!ai.apiKey) return Response.json({ code: "unsupported" }, { status: 422 });
   try {
-    const { parseStatement } = await import("@/lib/ai");
-    return Response.json({ ...(await parseStatement(text)), parser: "ai" });
+    const r = await parseStatement(text, ai.ask);
+    return r.accounts.length ? Response.json({ ...r, parser: "ai" }) : Response.json({ code: "ai", error: "no transactions found." }, { status: 422 });
   } catch (e) {
-    return Response.json({ code: "ai", error: (e as Error).message }, { status: 502 });
+    const unreadable = !(e instanceof AiError) && ["SyntaxError", "ZodError"].includes((e as Error).name); // cut-off or malformed JSON
+    return Response.json({ code: "ai", error: unreadable ? "its answer was incomplete. Try a shorter period." : (e as Error).message }, { status: 502 });
   }
 }

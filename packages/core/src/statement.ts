@@ -177,3 +177,7 @@ export function mergeStatements(files: ParsedAccount[][]): ParsedAccount[] {
     ...acc, transactions: [...months.keys()].sort().flatMap((m) => months.get(m)!.slice().sort((x, y) => x.date.localeCompare(y.date))),
   }));
 }
+
+/** AI-read statements: opening + every transaction must land on the printed closing balance. Unknown balances pass. */
+export const addsUp = (opening: number | null, closing: number | null, txns: { amount: number }[]) =>
+  opening === null || closing === null || Math.abs(opening + txns.reduce((s, t) => s + t.amount, 0) - closing) < 0.5;

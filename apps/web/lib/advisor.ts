@@ -66,11 +66,12 @@ export async function trendText(markets: [string, string][]): Promise<string> {
 export type ChatMsg = { role: "system" | "user" | "assistant"; content: string };
 export class AiError extends Error { constructor(public code: "auth" | "balance" | "rate" | "down", msg: string) { super(msg); } }
 
-export async function deepseek(apiKey: string, model: string, messages: ChatMsg[], json = false): Promise<string> {
+export async function deepseek(apiKey: string, model: string, messages: ChatMsg[], json = false, maxTokens = 8000): Promise<string> {
   const r = await fetch("https://api.deepseek.com/chat/completions", {
     method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
     // DeepSeek models think before answering, and the thinking counts against max_tokens
-    body: JSON.stringify({ model, messages, max_tokens: 8000, stream: false, ...(json && { response_format: { type: "json_object" } }) }), signal: AbortSignal.timeout(110_000),
+    body: JSON.stringify({ model, messages, max_tokens: maxTokens, stream: false, ...(json && { response_format: { type: "json_object" } }) }),
+    signal: AbortSignal.timeout(maxTokens > 8000 ? 280_000 : 110_000),
   });
   if (r.status === 401) throw new AiError("auth", "DeepSeek rejected the API key.");
   if (r.status === 402) throw new AiError("balance", "The DeepSeek account has no balance left.");
@@ -124,7 +125,8 @@ export async function userAi(userId: string) {
   const enc = useClaude ? st?.claude_key_enc : st?.api_key_enc;
   const ownKey = enc ? decryptKey(enc) : null;
   const apiKey = useClaude ? ownKey : ownKey ?? process.env.DEEPSEEK_API_KEY ?? null;
-  const ask = (messages: ChatMsg[], json = false) => (useClaude ? claude(apiKey!, messages) : deepseek(apiKey!, ownKey ? st!.model : "deepseek-flash", messages, json));
+  const ask = (messages: ChatMsg[], json = false, maxTokens?: number) =>
+    useClaude ? claude(apiKey!, messages) : deepseek(apiKey!, ownKey ? st!.model : "deepseek-flash", messages, json, maxTokens);
   return { st, ownKey, apiKey, ask };
 }
 

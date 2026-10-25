@@ -1,51 +1,46 @@
-import Anthropic from "@anthropic-ai/sdk";
-import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
 import { z } from "zod";
-import { CATEGORIES } from "@nilai/core";
+import { addsUp, CATEGORIES, type ParsedAccount } from "@nilai/core";
+import type { ChatMsg } from "./advisor";
 
-// Fallback reader for statements the rule-based parsers do not cover (only used when ANTHROPIC_API_KEY is set).
-export const MODEL = "claude-haiku-5-5";
-const client = () => new Anthropic(); // ANTHROPIC_API_KEY from the server env
-
-/** Streams (outputs can be long) and validates the JSON answer against `schema`. */
-async function structured<T extends z.ZodType>(schema: T, system: string, user: string, effort: "low"): Promise<z.infer<T>> {
-  const msg = await client().messages.stream({
-    model: MODEL, max_tokens: 64000, system,
-    output_config: { format: zodOutputFormat(schema), effort },
-    messages: [{ role: "user", content: user }],
-  }).finalMessage();
-  if (msg.stop_reason === "refusal") throw new Error("The AI declined to read this file.");
-  if (msg.stop_reason === "max_tokens") throw new Error("The statement is too long to read in one go. Try a shorter period.");
-  const text = msg.content.flatMap((b) => (b.type === "text" ? [b.text] : [])).join("");
-  return schema.parse(JSON.parse(text));
-}
-
+// Reader for statements the rule-based Mandiri parsers do not cover, using the user's own AI (DeepSeek or Claude).
+const num = z.coerce.number();
 const Statement = z.object({
   accounts: z.array(z.object({
-    label: z.string().describe("Account name and number as printed, e.g. 'Tabungan Mandiri 123-00-xxxx'"),
-    currency: z.string().describe("ISO code, e.g. IDR or USD"),
-    closing_balance: z.number().nullable(),
-    transactions: z.array(z.object({
-      date: z.string().describe("YYYY-MM-DD"),
-      description: z.string(),
-      amount: z.number().describe("Positive = money in (CR/kredit), negative = money out (DB/debet), in the account currency"),
-      category: z.enum(CATEGORIES),
-    })),
+    label: z.string(),
+    currency: z.string().catch("IDR"),
+    opening_balance: num.nullable().catch(null),
+    closing_balance: num.nullable().catch(null),
+    transactions: z.array(z.object({ date: z.string(), description: z.string().catch(""), amount: num, category: z.enum(CATEGORIES).catch("Other") })),
   })),
 });
-export type ParsedStatement = z.infer<typeof Statement>;
 
-export function parseStatement(text: string) {
-  return structured(Statement,
-    "You extract transactions from Indonesian bank statements (Mandiri, BCA, BRI, BNI, Jago, Jenius and others), including consolidated statements that list several accounts.",
-    `Extract every transaction, grouped by account. A consolidated statement (for example Mandiri "Laporan Konsolidasi") lists several accounts: return each one separately; skip sections that are summaries only.
-Rules:
-- Amounts are plain numbers in the account currency. Indonesian format "1.250.000,00" means 1250000. CR/Kredit/Masuk is positive, DB/Debet/Keluar is negative.
-- Dates as YYYY-MM-DD; infer the year from the statement period.
-- Skip opening/closing balance lines and running-balance columns. closing_balance is the account's final balance, or null if not printed.
-- Category: Salary for payroll/gaji/salary credits; Transfer for transfers between own accounts or to people; Investment for securities, mutual funds, crypto exchanges, deposito placements; Bills for utilities, phone, internet, rent, insurance, loan instalments; then Food, Transport, Shopping, Income (other money in), Other.
+const SYSTEM = `You extract transactions from Indonesian bank and e-wallet statements and reply with JSON only.
+Formats you will meet (text comes from a PDF, Excel or CSV export, columns separated by spaces or commas):
+- Mandiri: "Tanggal | Keterangan | Debit/Kredit | Saldo"; a consolidated statement ("Laporan Konsolidasi") lists several accounts.
+- BCA e-Statement / KlikBCA: "TANGGAL KETERANGAN CBG MUTASI SALDO"; dates DD/MM; a debit has "DB" after the amount, a credit has "CR" or nothing; "SALDO AWAL" is the opening balance.
+- BRI (BRImo): "Tanggal Transaksi | Uraian Transaksi | Teller | Debet | Kredit | Saldo".
+- BNI: "Tanggal | Uraian | Debet/Kredit (D/K) | Saldo", or separate Debit and Credit columns.
+- BSI, CIMB Niaga, Permata, Danamon, OCBC, BTN: separate Debit/Credit (Debet/Kredit) columns plus running balance.
+- Digital banks (Jago, Jenius/SMBC, SeaBank, blu by BCA Digital, Bank Neo, Allo, Superbank) and e-wallets (GoPay, OVO, DANA, ShopeePay): one signed amount per row, or "Masuk/Keluar", "Uang masuk/Uang keluar", "+/-".
+- Credit cards: purchases are money out (negative), payments to the card are money in (positive).`;
+
+const RULES = `Return {"accounts":[{"label","currency","opening_balance","closing_balance","transactions":[{"date","description","amount","category"}]}]}.
+- One entry per account. label: bank, product and account number as printed, e.g. "BCA Tahapan 123xxxx890". currency: ISO code (IDR, USD, …).
+- amount: a plain JSON number in the account currency; positive = money in (CR, Kredit, Masuk), negative = money out (DB, Debet, D, Keluar).
+- Numbers may be "1,250,000.00" (BCA, Mandiri, BRI) or "1.250.000,00": the last separator followed by exactly 2 digits is the decimal point; both mean 1250000.
+- The running balance (Saldo) column is not an amount. Use the balance changes to decide the sign when the debit/credit marker is unclear.
+- opening_balance: "Saldo Awal"/opening balance, closing_balance: "Saldo Akhir"/closing balance; null if not printed. Never list them as transactions.
+- date: YYYY-MM-DD; infer the year from the statement period.
 - description: short and readable, without reference numbers.
+- category, one of: Salary (payroll, gaji), Transfer (between people or own accounts), Investment (securities, reksa dana, crypto exchanges, deposito), Bills (utilities, phone, internet, rent, insurance, loan instalments, card fees), Food, Transport, Shopping, Income (other money in), Other.
+- Skip summary-only sections. Extract every transaction; do not invent any.`;
 
-STATEMENT:
-${text}`, "low");
+/** Raises SyntaxError / ZodError when the reply is not usable; the caller reports it. */
+export async function parseStatement(text: string, ask: (m: ChatMsg[], json: boolean, maxTokens: number) => Promise<string>): Promise<{ accounts: ParsedAccount[] }> {
+  const reply = await ask([{ role: "system", content: SYSTEM }, { role: "user", content: `${RULES}\n\nSTATEMENT:\n${text}` }], true, 64_000);
+  const j = Statement.parse(JSON.parse(reply.slice(reply.indexOf("{"), reply.lastIndexOf("}") + 1)));
+  return {
+    accounts: j.accounts.filter((a) => a.transactions.length).map(({ opening_balance, ...a }) =>
+      ({ ...a, balanced: addsUp(opening_balance, a.closing_balance, a.transactions) })),
+  };
 }
